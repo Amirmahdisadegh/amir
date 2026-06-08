@@ -2,7 +2,7 @@
   "colors": [{
     "color": {
       "color-space": "srgb",
-      "components": {"alpha":"1","blue":"0.918","green":"0.435","red":"0.486"}
+      "components": {"alpha":"1","blue":"0.063","green":"0.047","red":"0.039"}
     },
     "idiom": "universal"
   }],
