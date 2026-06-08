@@ -206,31 +206,3 @@ struct ExpenseListView: View {
     }
 }
 
-// MARK: - Filter Chip
-
-struct FilterChip: View {
-    var icon: String? = nil
-    let title: String
-    let isSelected: Bool
-    var color: Color = .appPrimary
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                if let icon {
-                    Image(systemName: icon)
-                        .font(.caption)
-                }
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(isSelected ? color : Color(.secondarySystemBackground))
-            .foregroundColor(isSelected ? .white : .primary)
-            .clipShape(Capsule())
-        }
-    }
-}
