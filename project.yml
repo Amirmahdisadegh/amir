@@ -1,0 +1,40 @@
+name: HesabYar
+options:
+  bundleIdPrefix: com.hesabyar
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+targets:
+  HesabYar:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: HesabYar
+        excludes:
+          - "**/.DS_Store"
+    resources:
+      - path: HesabYar/Assets.xcassets
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hesabyar.app
+        SWIFT_VERSION: "5.9"
+        DEVELOPMENT_TEAM: ""
+        INFOPLIST_FILE: HesabYar/Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_EMIT_LOC_STRINGS: YES
+        ENABLE_PREVIEWS: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    capabilities:
+      camera:
+        enabled: true
+      photo-library:
+        enabled: true
+    info:
+      path: HesabYar/Info.plist
