@@ -66,8 +66,8 @@ struct AIAssistantView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 AISettingsView(apiKey: Binding(
-                    get: { aiViewModel.apiKey },
-                    set: { aiViewModel.apiKey = $0 }
+                    get: { aiViewModel.claudeAPIKey },
+                    set: { aiViewModel.claudeAPIKey = $0 }
                 ))
             }
         }
@@ -177,7 +177,10 @@ struct AIAssistantView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("پیامت رو بنویس...", text: $aiViewModel.inputText, axis: .vertical)
+                TextField("پیامت رو بنویس...", text: Binding(
+                    get: { aiViewModel.inputText },
+                    set: { aiViewModel.inputText = $0 }
+                ), axis: .vertical)
                     .lineLimit(1...4)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)

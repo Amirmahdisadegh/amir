@@ -75,7 +75,7 @@ struct ExpenseListView: View {
             }
             .navigationTitle("هزینه‌ها")
             .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $viewModel.searchText, prompt: "جستجو...")
+            .searchable(text: Binding(get: { viewModel.searchText }, set: { viewModel.searchText = $0 }), prompt: "جستجو...")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
