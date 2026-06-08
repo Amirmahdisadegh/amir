@@ -67,7 +67,7 @@ struct MonthlySummary {
 struct FinancialInsight: Identifiable {
     var id = UUID()
     var title: String
-    var description: String
+    var detail: String
     var icon: String
     var type: InsightType
     var amount: Double?

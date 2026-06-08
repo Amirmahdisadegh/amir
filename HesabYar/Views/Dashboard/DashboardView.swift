@@ -465,7 +465,7 @@ struct InsightCard: View {
                 .font(.subheadline)
                 .fontWeight(.bold)
 
-            Text(insight.description)
+            Text(insight.detail)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .lineLimit(3)

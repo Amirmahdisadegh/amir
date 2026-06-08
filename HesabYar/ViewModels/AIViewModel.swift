@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine
+import Observation
 
 @Observable
 final class AIViewModel {
@@ -105,7 +105,7 @@ final class AIViewModel {
 
         if q.contains("صرفه") || q.contains("کمتر") || q.contains("قطع") {
             let insights = AIService.shared.analyzeOffline(expenses: expenses)
-            let tips = insights.filter { $0.type == .tip }.map { "• \($0.description)" }
+            let tips = insights.filter { $0.type == .tip }.map { "• \($0.detail)" }
             return tips.isEmpty
                 ? "برای صرفه‌جویی پیشنهاد خاصی ندارم - بیشتر داده نیاز است"
                 : "پیشنهادهای صرفه‌جویی:\n" + tips.joined(separator: "\n")
@@ -114,7 +114,7 @@ final class AIViewModel {
         // Default
         let insights = AIService.shared.analyzeOffline(expenses: expenses)
         if let first = insights.first {
-            return "📊 \(first.title)\n\(first.description)\n\nبرای پاسخ دقیق‌تر، کلید API را در تنظیمات وارد کن تا از هوش مصنوعی آنلاین استفاده کنم."
+            return "📊 \(first.title)\n\(first.detail)\n\nبرای پاسخ دقیق‌تر، کلید API را در تنظیمات وارد کن تا از هوش مصنوعی آنلاین استفاده کنم."
         }
         return "این ماه \(fmt(total)) تومان خرج کردی. برای تحلیل بیشتر سوال دقیق‌تر بپرس."
     }

@@ -1,6 +1,6 @@
 import SwiftUI
 import SwiftData
-import Combine
+import Observation
 
 @Observable
 final class ExpenseViewModel {

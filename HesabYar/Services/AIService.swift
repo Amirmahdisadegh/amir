@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - AI Service (Online + Offline)
 
-final class AIService: ObservableObject {
+final class AIService {
     static let shared = AIService()
     private init() {}
 
@@ -71,7 +71,7 @@ final class AIService: ObservableObject {
             let percentage = totalThisMonth > 0 ? Int((topCat.value / totalThisMonth) * 100) : 0
             insights.append(FinancialInsight(
                 title: "بیشترین هزینه",
-                description: "این ماه \(percentage)% از بودجه‌ات رو برای \(topCat.key.displayName) خرج کردی",
+                detail: "این ماه \(percentage)% از بودجه‌ات رو برای \(topCat.key.displayName) خرج کردی",
                 icon: topCat.key.icon,
                 type: .info,
                 amount: topCat.value,
@@ -85,7 +85,7 @@ final class AIService: ObservableObject {
             let recurringTotal = recurringExpenses.reduce(0) { $0 + $1.amount }
             insights.append(FinancialInsight(
                 title: "هزینه‌های ثابت",
-                description: "ماهانه \(formatAmount(recurringTotal)) تومان هزینه اشتراک و ثابت داری",
+                detail: "ماهانه \(formatAmount(recurringTotal)) تومان هزینه اشتراک و ثابت داری",
                 icon: "arrow.clockwise.circle.fill",
                 type: .info,
                 amount: recurringTotal
@@ -101,7 +101,7 @@ final class AIService: ObservableObject {
         if projectedMonthly > totalThisMonth * 1.3 {
             insights.append(FinancialInsight(
                 title: "پیش‌بینی ماهانه",
-                description: "با این روند، تا آخر ماه حدود \(formatAmount(projectedMonthly)) تومان خرج می‌کنی",
+                detail: "با این روند، تا آخر ماه حدود \(formatAmount(projectedMonthly)) تومان خرج می‌کنی",
                 icon: "chart.line.uptrend.xyaxis",
                 type: .warning,
                 amount: projectedMonthly
@@ -115,7 +115,7 @@ final class AIService: ObservableObject {
             if subExpenses.count > 3 {
                 insights.append(FinancialInsight(
                     title: "اشتراک‌های زیاد",
-                    description: "\(subExpenses.count) اشتراک فعال داری - بررسی کن کدوم‌ها لازم هستن",
+                    detail: "\(subExpenses.count) اشتراک فعال داری - بررسی کن کدوم‌ها لازم هستن",
                     icon: "arrow.clockwise.circle",
                     type: .tip
                 ))
@@ -132,7 +132,7 @@ final class AIService: ObservableObject {
         if weekendRatio > 0.4 {
             insights.append(FinancialInsight(
                 title: "خرج آخر هفته",
-                description: "\(Int(weekendRatio * 100))% از هزینه‌هایت آخر هفته‌اس - سعی کن برنامه‌ریزی کنی",
+                detail: "\(Int(weekendRatio * 100))% از هزینه‌هایت آخر هفته‌اس - سعی کن برنامه‌ریزی کنی",
                 icon: "calendar.badge.exclamationmark",
                 type: .tip
             ))
