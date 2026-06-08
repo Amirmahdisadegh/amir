@@ -16,14 +16,14 @@ targets:
       - path: HesabYar
         excludes:
           - "**/.DS_Store"
-    resources:
-      - path: HesabYar/Assets.xcassets
-        optional: true
+          - "Info.plist"
+          - "Assets.xcassets"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hesabyar.app
         SWIFT_VERSION: "5.9"
         DEVELOPMENT_TEAM: ""
+        GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: HesabYar/Info.plist
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
