@@ -12,3 +12,17 @@ extension Color {
     static let wdMuted      = Color(hex: "8B94A8")!
     static let wdInk        = Color.white
 }
+
+// Allows .wdXxx shorthand inside .foregroundStyle() / .fill() / .stroke()
+extension ShapeStyle where Self == Color {
+    static var wdBg:         Color { .wdBg }
+    static var wdSurface:    Color { .wdSurface }
+    static var wdSurfaceAlt: Color { .wdSurfaceAlt }
+    static var wdBorder:     Color { .wdBorder }
+    static var wdAccent:     Color { .wdAccent }
+    static var wdSuccess:    Color { .wdSuccess }
+    static var wdError:      Color { .wdError }
+    static var wdWarning:    Color { .wdWarning }
+    static var wdMuted:      Color { .wdMuted }
+    static var wdInk:        Color { .wdInk }
+}
