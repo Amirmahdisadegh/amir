@@ -9,127 +9,119 @@ final class AIViewModel {
     var isOnlineMode = true
     var errorMessage: String? = nil
 
-    var apiKey: String {
+    var provider: AIProvider {
+        get { AIProvider(rawValue: UserDefaults.standard.string(forKey: "ai_provider") ?? AIProvider.claude.rawValue) ?? .claude }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "ai_provider") }
+    }
+
+    var claudeAPIKey: String {
         get { UserDefaults.standard.string(forKey: "claude_api_key") ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: "claude_api_key") }
     }
 
-    var hasApiKey: Bool { !apiKey.isEmpty }
+    var openAIKey: String {
+        get { UserDefaults.standard.string(forKey: "openai_api_key") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "openai_api_key") }
+    }
 
-    func sendMessage(expenses: [Expense]) async {
+    var openAIModel: String {
+        get { UserDefaults.standard.string(forKey: "openai_model") ?? "gpt-4o-mini" }
+        set { UserDefaults.standard.set(newValue, forKey: "openai_model") }
+    }
+
+    var activeAPIKey: String {
+        switch provider {
+        case .claude: return claudeAPIKey
+        case .openai: return openAIKey
+        }
+    }
+
+    var hasApiKey: Bool { !activeAPIKey.isEmpty }
+
+    func sendMessage(expenses: [Expense], subscriptions: [SubscriptionRecord] = []) async {
         let userText = inputText.trimmingCharacters(in: .whitespaces)
         guard !userText.isEmpty else { return }
 
         inputText = ""
         messages.append(ChatMessage(content: userText, isUser: true))
-
-        let loadingId = UUID()
         messages.append(ChatMessage(content: "", isUser: false, isLoading: true))
         isLoading = true
         errorMessage = nil
 
         do {
             let response: String
-
             if isOnlineMode && hasApiKey {
                 let prompt = AIService.shared.buildExpenseSummaryPrompt(
-                    expenses: expenses,
-                    question: userText
+                    expenses: expenses, subscriptions: subscriptions, question: userText
                 )
-                response = try await AIService.shared.analyzeWithClaude(prompt: prompt, apiKey: apiKey)
+                response = try await AIService.shared.analyze(
+                    prompt: prompt, provider: provider,
+                    apiKey: activeAPIKey, openAIModel: openAIModel
+                )
             } else {
                 response = generateOfflineResponse(question: userText, expenses: expenses)
             }
-
             messages.removeAll { $0.isLoading }
             messages.append(ChatMessage(content: response, isUser: false))
         } catch {
             messages.removeAll { $0.isLoading }
-            let errMsg = "⚠️ خطا: \(error.localizedDescription)"
-            messages.append(ChatMessage(content: errMsg, isUser: false))
+            messages.append(ChatMessage(content: "⚠️ \(error.localizedDescription)", isUser: false))
             errorMessage = error.localizedDescription
         }
-
         isLoading = false
     }
 
     private func generateOfflineResponse(question: String, expenses: [Expense]) -> String {
         let q = question.lowercased()
-        let calendar = Calendar.current
+        let cal = Calendar.current
         let now = Date()
-        let currentMonth = calendar.component(.month, from: now)
-        let currentYear = calendar.component(.year, from: now)
-
         let monthly = expenses.filter {
-            calendar.component(.month, from: $0.date) == currentMonth &&
-            calendar.component(.year, from: $0.date) == currentYear
+            cal.component(.month, from: $0.date) == cal.component(.month, from: now) &&
+            cal.component(.year, from: $0.date) == cal.component(.year, from: now)
         }
-
         let total = monthly.reduce(0) { $0 + $1.amount }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.locale = Locale(identifier: "fa_IR")
 
-        func fmt(_ v: Double) -> String { formatter.string(from: NSNumber(value: v)) ?? "\(Int(v))" }
-
-        if q.contains("چقدر") || q.contains("چند") || q.contains("کل") || q.contains("مجموع") {
+        if q.contains("چقدر") || q.contains("مجموع") || q.contains("کل") {
             var catTotals: [ExpenseCategory: Double] = [:]
             for e in monthly { catTotals[e.category, default: 0] += e.amount }
-
-            var lines = ["این ماه مجموع \(fmt(total)) تومان خرج کردی:\n"]
+            var lines = ["این ماه مجموع \(total.formattedCompact) تومان خرج کردی:\n"]
             for (cat, amt) in catTotals.sorted(by: { $0.value > $1.value }) {
-                lines.append("• \(cat.displayName): \(fmt(amt)) تومان")
+                lines.append("• \(cat.displayName): \(amt.formattedCompact) تومان")
             }
             return lines.joined(separator: "\n")
         }
 
         if q.contains("غذا") || q.contains("رستوران") {
-            let foodTotal = monthly.filter { $0.category == .food || $0.category == .restaurant || $0.category == .grocery }
+            let food = monthly.filter { [.food, .restaurant, .grocery].contains($0.category) }
                 .reduce(0) { $0 + $1.amount }
-            return "برای غذا و خوردنی این ماه \(fmt(foodTotal)) تومان خرج کردی."
+            return "برای غذا این ماه \(food.formattedCompact) تومان خرج کردی."
         }
 
-        if q.contains("اشتراک") || q.contains("ماهانه") {
-            let subTotal = monthly.filter { $0.category == .subscriptions }.reduce(0) { $0 + $1.amount }
+        if q.contains("اشتراک") {
             let subs = monthly.filter { $0.category == .subscriptions }
-            var lines = ["اشتراک‌های فعال این ماه (\(fmt(subTotal)) تومان):"]
-            for s in subs { lines.append("• \(s.title): \(fmt(s.amount)) تومان") }
+            let subTotal = subs.reduce(0) { $0 + $1.amount }
+            var lines = ["اشتراک‌های این ماه (\(subTotal.formattedCompact) تومان):"]
+            subs.forEach { lines.append("• \($0.title): \($0.amount.formattedCompact) تومان") }
             return lines.joined(separator: "\n")
         }
 
         if q.contains("بیشتر") || q.contains("بالا") {
             if let top = monthly.max(by: { $0.amount < $1.amount }) {
-                return "بیشترین هزینه‌ات: \(top.title) به مبلغ \(fmt(top.amount)) تومان در دسته \(top.category.displayName)"
+                return "بیشترین هزینه: \(top.title) — \(top.amount.formattedCompact) تومان (\(top.category.displayName))"
             }
         }
 
-        if q.contains("صرفه") || q.contains("کمتر") || q.contains("قطع") {
-            let insights = AIService.shared.analyzeOffline(expenses: expenses)
-            let tips = insights.filter { $0.type == .tip }.map { "• \($0.detail)" }
-            return tips.isEmpty
-                ? "برای صرفه‌جویی پیشنهاد خاصی ندارم - بیشتر داده نیاز است"
-                : "پیشنهادهای صرفه‌جویی:\n" + tips.joined(separator: "\n")
-        }
-
-        // Default
         let insights = AIService.shared.analyzeOffline(expenses: expenses)
         if let first = insights.first {
-            return "📊 \(first.title)\n\(first.detail)\n\nبرای پاسخ دقیق‌تر، کلید API را در تنظیمات وارد کن تا از هوش مصنوعی آنلاین استفاده کنم."
+            return "📊 \(first.title)\n\(first.detail)\n\nبرای تحلیل دقیق‌تر، در تنظیمات API Key وارد کن."
         }
-        return "این ماه \(fmt(total)) تومان خرج کردی. برای تحلیل بیشتر سوال دقیق‌تر بپرس."
+        return "این ماه \(total.formattedCompact) تومان خرج کردی. سوال دقیق‌تری بپرس."
     }
 
-    func clearChat() {
-        messages.removeAll()
-    }
+    func clearChat() { messages.removeAll() }
 
     var suggestedQuestions: [String] {
-        [
-            "این ماه چقدر خرج کردم؟",
-            "برای غذا چقدر هزینه داشتم؟",
-            "اشتراک‌های من چیست؟",
-            "چطور کمتر خرج کنم؟",
-            "بیشترین هزینه‌ام کجا بود؟"
-        ]
+        ["این ماه چقدر خرج کردم؟", "برای غذا چقدر هزینه داشتم؟",
+         "اشتراک‌های من چیست؟", "چطور کمتر خرج کنم؟", "بیشترین هزینه‌ام کجا بود؟"]
     }
 }

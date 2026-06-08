@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="60%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="glassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+
+  <!-- Glass shimmer overlay -->
+  <ellipse cx="512" cy="280" rx="420" ry="220" fill="url(#glassGrad)" opacity="0.6"/>
+
+  <!-- Coin circle -->
+  <circle cx="512" cy="430" r="240" fill="url(#coinGrad)" filter="url(#shadow)"/>
+  <circle cx="512" cy="430" r="200" fill="none" stroke="#fef3c7" stroke-width="6" opacity="0.5"/>
+
+  <!-- Persian ح letter -->
+  <text x="512" y="510" font-family="Georgia, serif" font-size="220" fill="white"
+        text-anchor="middle" dominant-baseline="middle" font-weight="bold" opacity="0.95">ح</text>
+
+  <!-- Rising chart line at bottom -->
+  <g transform="translate(0, 680)">
+    <!-- Bar chart -->
+    <rect x="160" y="160" width="80" height="140" rx="12" fill="#34d399" opacity="0.85"/>
+    <rect x="270" y="100" width="80" height="200" rx="12" fill="#34d399" opacity="0.85"/>
+    <rect x="380" y="60"  width="80" height="240" rx="12" fill="#34d399" opacity="0.85"/>
+    <rect x="490" y="100" width="80" height="200" rx="12" fill="#34d399" opacity="0.85"/>
+    <rect x="600" y="30"  width="80" height="270" rx="12" fill="#10b981" opacity="0.95"/>
+    <rect x="710" y="70"  width="80" height="230" rx="12" fill="#6ee7b7" opacity="0.8"/>
+    <rect x="820" y="10"  width="80" height="290" rx="12" fill="#10b981" opacity="0.95"/>
+
+    <!-- Trend line -->
+    <polyline points="200,155 310,95 420,55 530,95 640,25 750,65 860,5"
+              stroke="#a7f3d0" stroke-width="10" fill="none"
+              stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Arrow tip -->
+    <polygon points="860,5 840,30 880,30" fill="#a7f3d0"/>
+  </g>
+
+  <!-- Subtle top highlight -->
+  <rect x="200" y="40" width="624" height="120" rx="40"
+        fill="white" opacity="0.06"/>
+</svg>

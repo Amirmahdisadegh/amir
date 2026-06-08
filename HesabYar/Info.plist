@@ -8,6 +8,8 @@
     <string>برای انتخاب تصویر فیش از گالری</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>برای ذخیره تصاویر فیش</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>برای اسکن ویدیویی فیش‌ها</string>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>
