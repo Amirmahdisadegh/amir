@@ -2,31 +2,33 @@ import SwiftUI
 import SwiftData
 
 struct ExpenseListView: View {
+    @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
     @State private var viewModel = ExpenseViewModel()
     @State private var showingAddExpense = false
     @State private var showingScanner = false
     @State private var selectedExpense: Expense? = nil
-    @State private var showingDeleteAlert = false
     @State private var expenseToDelete: Expense? = nil
+    @State private var showingDeleteAlert = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Filter bar
                 filterBar
 
                 if filteredExpenses.isEmpty {
                     Spacer()
                     EmptyStateView(
                         icon: viewModel.searchText.isEmpty ? "receipt" : "magnifyingglass",
-                        title: viewModel.searchText.isEmpty ? "هیچ هزینه‌ای ثبت نشده" : "نتیجه‌ای یافت نشد",
+                        title: viewModel.searchText.isEmpty
+                            ? settings.t("No Expenses", "هیچ هزینه‌ای ثبت نشده")
+                            : settings.t("No Results", "نتیجه‌ای یافت نشد"),
                         subtitle: viewModel.searchText.isEmpty
-                            ? "اولین هزینه‌ات رو اضافه کن"
-                            : "جستجوی دیگری امتحان کن",
+                            ? settings.t("Add your first expense", "اولین هزینه‌ات رو اضافه کن")
+                            : settings.t("Try a different search", "جستجوی دیگری امتحان کن"),
                         action: viewModel.searchText.isEmpty ? { showingAddExpense = true } : nil,
-                        actionTitle: "افزودن هزینه"
+                        actionTitle: settings.t("Add Expense", "افزودن هزینه")
                     )
                     Spacer()
                 } else {
@@ -42,14 +44,14 @@ struct ExpenseListView: View {
                                                 expenseToDelete = expense
                                                 showingDeleteAlert = true
                                             } label: {
-                                                Label("حذف", systemImage: "trash")
+                                                Label(settings.t("Delete", "حذف"), systemImage: "trash")
                                             }
                                         }
                                         .swipeActions(edge: .leading) {
                                             Button {
                                                 selectedExpense = expense
                                             } label: {
-                                                Label("ویرایش", systemImage: "pencil")
+                                                Label(settings.t("Edit", "ویرایش"), systemImage: "pencil")
                                             }
                                             .tint(.blue)
                                         }
@@ -57,50 +59,53 @@ struct ExpenseListView: View {
                             }
                         }
 
-                        // Total footer
                         Section {
                             HStack {
-                                Text("مجموع نمایش داده شده")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                Text(settings.t("Total Shown", "مجموع نمایش داده شده"))
+                                    .font(.subheadline).foregroundStyle(.secondary)
                                 Spacer()
                                 Text(filteredTotal.formattedAsCurrency)
-                                    .font(.subheadline)
-                                    .fontWeight(.bold)
+                                    .font(.subheadline).fontWeight(.bold)
                             }
                         }
                     }
                     .listStyle(.insetGrouped)
                 }
             }
-            .navigationTitle("هزینه‌ها")
-            .navigationBarTitleDisplayMode(.large)
-            .searchable(text: Binding(get: { viewModel.searchText }, set: { viewModel.searchText = $0 }), prompt: "جستجو...")
+            .navigationTitle(settings.t("Expenses", "هزینه‌ها"))
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(
+                text: Binding(
+                    get: { viewModel.searchText },
+                    set: { viewModel.searchText = $0 }
+                ),
+                prompt: settings.t("Search...", "جستجو...")
+            )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Menu("مرتب‌سازی") {
+                        Menu(settings.t("Sort By", "مرتب‌سازی")) {
                             ForEach(ExpenseViewModel.SortOrder.allCases, id: \.rawValue) { order in
                                 Button {
                                     viewModel.sortOrder = order
                                 } label: {
                                     if viewModel.sortOrder == order {
-                                        Label(order.rawValue, systemImage: "checkmark")
+                                        Label(order.displayName, systemImage: "checkmark")
                                     } else {
-                                        Text(order.rawValue)
+                                        Text(order.displayName)
                                     }
                                 }
                             }
                         }
-                        Menu("بازه زمانی") {
+                        Menu(settings.t("Time Range", "بازه زمانی")) {
                             ForEach(ExpenseViewModel.DateRange.allCases, id: \.rawValue) { range in
                                 Button {
                                     viewModel.selectedDateRange = range
                                 } label: {
                                     if viewModel.selectedDateRange == range {
-                                        Label(range.rawValue, systemImage: "checkmark")
+                                        Label(range.displayName, systemImage: "checkmark")
                                     } else {
-                                        Text(range.rawValue)
+                                        Text(range.displayName)
                                     }
                                 }
                             }
@@ -110,24 +115,25 @@ struct ExpenseListView: View {
                             viewModel.searchText = ""
                             viewModel.selectedDateRange = .thisMonth
                         } label: {
-                            Label("پاک کردن فیلترها", systemImage: "xmark.circle")
+                            Label(settings.t("Clear Filters", "پاک کردن فیلترها"), systemImage: "xmark.circle")
                         }
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                             .symbolVariant(viewModel.selectedCategory != nil ? .fill : .none)
                     }
                 }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
                             showingAddExpense = true
                         } label: {
-                            Label("ورود دستی", systemImage: "square.and.pencil")
+                            Label(settings.t("Manual Entry", "ورود دستی"), systemImage: "square.and.pencil")
                         }
                         Button {
                             showingScanner = true
                         } label: {
-                            Label("اسکن فیش", systemImage: "camera.viewfinder")
+                            Label(settings.t("Scan Receipt", "اسکن فیش"), systemImage: "camera.viewfinder")
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -139,11 +145,12 @@ struct ExpenseListView: View {
             .sheet(item: $selectedExpense) { expense in
                 AddExpenseView(editingExpense: expense)
             }
-            .alert("حذف هزینه", isPresented: $showingDeleteAlert, presenting: expenseToDelete) { expense in
-                Button("حذف", role: .destructive) { delete(expense) }
-                Button("انصراف", role: .cancel) {}
+            .alert(settings.t("Delete Expense", "حذف هزینه"),
+                   isPresented: $showingDeleteAlert, presenting: expenseToDelete) { expense in
+                Button(settings.t("Delete", "حذف"), role: .destructive) { delete(expense) }
+                Button(settings.t("Cancel", "انصراف"), role: .cancel) {}
             } message: { expense in
-                Text("'\(expense.title)' حذف خواهد شد.")
+                Text("'\(expense.title)' \(settings.t("will be deleted.", "حذف خواهد شد."))")
             }
         }
     }
@@ -154,7 +161,7 @@ struct ExpenseListView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 FilterChip(
-                    title: "همه",
+                    title: settings.t("All", "همه"),
                     isSelected: viewModel.selectedCategory == nil
                 ) { viewModel.selectedCategory = nil }
 
@@ -177,16 +184,10 @@ struct ExpenseListView: View {
 
     private func sectionHeader(for dateKey: String) -> some View {
         HStack {
-            Text(dateKey)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
+            Text(dateKey).font(.subheadline).fontWeight(.semibold).foregroundStyle(.secondary)
             Spacer()
             let dayTotal = (groupedExpenses[dateKey] ?? []).reduce(0) { $0 + $1.amount }
-            Text(dayTotal.formattedCompact)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
+            Text(dayTotal.formattedCompact).font(.caption).fontWeight(.medium).foregroundStyle(.secondary)
         }
     }
 
@@ -194,15 +195,11 @@ struct ExpenseListView: View {
 
     private var filteredExpenses: [Expense] { viewModel.filteredExpenses(expenses) }
     private var filteredTotal: Double { filteredExpenses.reduce(0) { $0 + $1.amount } }
-
     private var groupedExpenses: [String: [Expense]] {
-        Dictionary(grouping: filteredExpenses) { expense in
-            expense.date.relativeFormatted
-        }
+        Dictionary(grouping: filteredExpenses) { $0.date.relativeFormatted }
     }
 
     private func delete(_ expense: Expense) {
         modelContext.delete(expense)
     }
 }
-

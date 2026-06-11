@@ -3,6 +3,7 @@ import SwiftData
 import Charts
 
 struct BudgetView: View {
+    @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Query private var budgets: [Budget]
     @Query private var expenses: [Expense]
@@ -60,8 +61,8 @@ struct BudgetView: View {
                 .padding(.bottom, 24)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("بودجه‌بندی")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle(settings.t("Budgets", "بودجه‌بندی"))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

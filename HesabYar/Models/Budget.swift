@@ -20,7 +20,7 @@ final class Budget {
     init(
         category: ExpenseCategory,
         monthlyLimit: Double,
-        currency: String = "IRR",
+        currency: String = "USD",
         month: Int = Calendar.current.component(.month, from: Date()),
         year: Int = Calendar.current.component(.year, from: Date()),
         notifyAt: Double = 0.8
@@ -56,24 +56,9 @@ struct MonthlySummary {
         components.day = 1
         let date = calendar.date(from: components) ?? Date()
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "fa_IR")
+        formatter.locale = Locale(identifier: "en_US")
         formatter.dateFormat = "MMMM yyyy"
         return formatter.string(from: date)
     }
 }
 
-// MARK: - Insight
-
-struct FinancialInsight: Identifiable {
-    var id = UUID()
-    var title: String
-    var detail: String
-    var icon: String
-    var type: InsightType
-    var amount: Double?
-    var category: ExpenseCategory?
-
-    enum InsightType {
-        case warning, tip, achievement, info
-    }
-}

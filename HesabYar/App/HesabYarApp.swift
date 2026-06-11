@@ -6,6 +6,7 @@ import UserNotifications
 struct HesabYarApp: App {
     let container: ModelContainer
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @State private var settings = AppSettings.shared
 
     init() {
         do {
@@ -25,11 +26,12 @@ struct HesabYarApp: App {
         WindowGroup {
             ContentView()
                 .modelContainer(container)
+                .environment(settings)
         }
     }
 }
 
-// MARK: - App Delegate for Notifications
+// MARK: - App Delegate
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
@@ -38,7 +40,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         return true
     }
 
-    // Show notifications even when app is in foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                   willPresent notification: UNNotification,
                                   withCompletionHandler handler: @escaping (UNNotificationPresentationOptions) -> Void) {

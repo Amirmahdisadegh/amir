@@ -24,6 +24,11 @@ final class AIViewModel {
         set { UserDefaults.standard.set(newValue, forKey: "openai_api_key") }
     }
 
+    var geminiKey: String {
+        get { UserDefaults.standard.string(forKey: "gemini_api_key") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "gemini_api_key") }
+    }
+
     var openAIModel: String {
         get { UserDefaults.standard.string(forKey: "openai_model") ?? "gpt-4o-mini" }
         set { UserDefaults.standard.set(newValue, forKey: "openai_model") }
@@ -33,6 +38,7 @@ final class AIViewModel {
         switch provider {
         case .claude: return claudeAPIKey
         case .openai: return openAIKey
+        case .gemini: return geminiKey
         }
     }
 
@@ -81,47 +87,53 @@ final class AIViewModel {
         }
         let total = monthly.reduce(0) { $0 + $1.amount }
 
-        if q.contains("چقدر") || q.contains("مجموع") || q.contains("کل") {
+        if q.contains("total") || q.contains("spend") || q.contains("much") || q.contains("چقدر") || q.contains("مجموع") {
             var catTotals: [ExpenseCategory: Double] = [:]
             for e in monthly { catTotals[e.category, default: 0] += e.amount }
-            var lines = ["این ماه مجموع \(total.formattedCompact) تومان خرج کردی:\n"]
+            var lines = ["This month you spent \(total.formattedCompact) total:\n"]
             for (cat, amt) in catTotals.sorted(by: { $0.value > $1.value }) {
-                lines.append("• \(cat.displayName): \(amt.formattedCompact) تومان")
+                lines.append("• \(cat.displayName): \(amt.formattedCompact)")
             }
             return lines.joined(separator: "\n")
         }
 
-        if q.contains("غذا") || q.contains("رستوران") {
+        if q.contains("food") || q.contains("restaurant") || q.contains("grocery") || q.contains("غذا") {
             let food = monthly.filter { [.food, .restaurant, .grocery].contains($0.category) }
                 .reduce(0) { $0 + $1.amount }
-            return "برای غذا این ماه \(food.formattedCompact) تومان خرج کردی."
+            return "You spent \(food.formattedCompact) on food this month."
         }
 
-        if q.contains("اشتراک") {
+        if q.contains("subscription") || q.contains("اشتراک") {
             let subs = monthly.filter { $0.category == .subscriptions }
             let subTotal = subs.reduce(0) { $0 + $1.amount }
-            var lines = ["اشتراک‌های این ماه (\(subTotal.formattedCompact) تومان):"]
-            subs.forEach { lines.append("• \($0.title): \($0.amount.formattedCompact) تومان") }
+            var lines = ["Subscriptions this month (\(subTotal.formattedCompact)):"]
+            subs.forEach { lines.append("• \($0.title): \($0.amount.formattedCompact)") }
             return lines.joined(separator: "\n")
         }
 
-        if q.contains("بیشتر") || q.contains("بالا") {
+        if q.contains("most") || q.contains("highest") || q.contains("بیشتر") {
             if let top = monthly.max(by: { $0.amount < $1.amount }) {
-                return "بیشترین هزینه: \(top.title) — \(top.amount.formattedCompact) تومان (\(top.category.displayName))"
+                return "Highest expense: \(top.title) — \(top.amount.formattedCompact) (\(top.category.displayName))"
             }
         }
 
         let insights = AIService.shared.analyzeOffline(expenses: expenses)
         if let first = insights.first {
-            return "📊 \(first.title)\n\(first.detail)\n\nبرای تحلیل دقیق‌تر، در تنظیمات API Key وارد کن."
+            return "📊 \(first.title)\n\(first.detail)\n\nFor smarter analysis, add an API key in Settings."
         }
-        return "این ماه \(total.formattedCompact) تومان خرج کردی. سوال دقیق‌تری بپرس."
+        return "This month you spent \(total.formattedCompact). Ask me a specific question!"
     }
 
     func clearChat() { messages.removeAll() }
 
     var suggestedQuestions: [String] {
-        ["این ماه چقدر خرج کردم؟", "برای غذا چقدر هزینه داشتم؟",
-         "اشتراک‌های من چیست؟", "چطور کمتر خرج کنم؟", "بیشترین هزینه‌ام کجا بود؟"]
+        let s = AppSettings.shared
+        return [
+            s.t("How much did I spend this month?", "این ماه چقدر خرج کردم؟"),
+            s.t("What did I spend on food?", "برای غذا چقدر هزینه داشتم؟"),
+            s.t("Show my subscriptions", "اشتراک‌های من چیست؟"),
+            s.t("How can I save more?", "چطور کمتر خرج کنم؟"),
+            s.t("What was my highest expense?", "بیشترین هزینه‌ام کجا بود؟")
+        ]
     }
 }

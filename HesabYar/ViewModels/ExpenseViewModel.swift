@@ -8,24 +8,45 @@ final class ExpenseViewModel {
     var selectedCategory: ExpenseCategory? = nil
     var selectedDateRange: DateRange = .thisMonth
     var sortOrder: SortOrder = .dateDescending
-    var showingAddExpense = false
-    var showingScanner = false
-    var selectedExpense: Expense? = nil
 
     enum DateRange: String, CaseIterable {
-        case today = "امروز"
-        case thisWeek = "این هفته"
-        case thisMonth = "این ماه"
-        case last3Months = "۳ ماه اخیر"
-        case thisYear = "امسال"
-        case all = "همه"
+        case today       = "Today"
+        case thisWeek    = "This Week"
+        case thisMonth   = "This Month"
+        case last3Months = "3 Months"
+        case thisYear    = "This Year"
+        case all         = "All Time"
+
+        var displayName: String {
+            AppSettings.shared.t(rawValue, {
+                switch self {
+                case .today:       return "امروز"
+                case .thisWeek:    return "این هفته"
+                case .thisMonth:   return "این ماه"
+                case .last3Months: return "۳ ماه اخیر"
+                case .thisYear:    return "امسال"
+                case .all:         return "همه"
+                }
+            }())
+        }
     }
 
     enum SortOrder: String, CaseIterable {
-        case dateDescending = "جدیدترین"
-        case dateAscending = "قدیمی‌ترین"
-        case amountDescending = "بیشترین مبلغ"
-        case amountAscending = "کمترین مبلغ"
+        case dateDescending  = "Newest First"
+        case dateAscending   = "Oldest First"
+        case amountDescending = "Highest Amount"
+        case amountAscending  = "Lowest Amount"
+
+        var displayName: String {
+            AppSettings.shared.t(rawValue, {
+                switch self {
+                case .dateDescending:   return "جدیدترین"
+                case .dateAscending:    return "قدیمی‌ترین"
+                case .amountDescending: return "بیشترین مبلغ"
+                case .amountAscending:  return "کمترین مبلغ"
+                }
+            }())
+        }
     }
 
     func filteredExpenses(_ expenses: [Expense]) -> [Expense] {
@@ -67,20 +88,14 @@ final class ExpenseViewModel {
         }
 
         switch sortOrder {
-        case .dateDescending:
-            result.sort { $0.date > $1.date }
-        case .dateAscending:
-            result.sort { $0.date < $1.date }
-        case .amountDescending:
-            result.sort { $0.amount > $1.amount }
-        case .amountAscending:
-            result.sort { $0.amount < $1.amount }
+        case .dateDescending:   result.sort { $0.date > $1.date }
+        case .dateAscending:    result.sort { $0.date < $1.date }
+        case .amountDescending: result.sort { $0.amount > $1.amount }
+        case .amountAscending:  result.sort { $0.amount < $1.amount }
         }
 
         return result
     }
-
-    // MARK: - Monthly Stats
 
     func monthlyTotal(_ expenses: [Expense]) -> Double {
         let calendar = Calendar.current
@@ -100,11 +115,8 @@ final class ExpenseViewModel {
             calendar.component(.month, from: $0.date) == calendar.component(.month, from: now) &&
             calendar.component(.year, from: $0.date) == calendar.component(.year, from: now)
         }
-
         var totals: [ExpenseCategory: Double] = [:]
-        for e in monthly {
-            totals[e.category, default: 0] += e.amount
-        }
+        for e in monthly { totals[e.category, default: 0] += e.amount }
         return totals.sorted { $0.value > $1.value }
     }
 
@@ -126,7 +138,7 @@ final class ExpenseViewModel {
                 .reduce(0) { $0 + $1.amount }
 
             let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "fa_IR")
+            formatter.locale = Locale(identifier: "en_US")
             formatter.dateFormat = "MMM"
             result.append((formatter.string(from: date), total))
         }
@@ -154,8 +166,6 @@ final class ExpenseViewModel {
         return (1...daysInMonth).map { day in (day, byDay[day] ?? 0) }
     }
 
-    // MARK: - Budget Progress
-
     func budgetProgress(for category: ExpenseCategory, budgets: [Budget], expenses: [Expense]) -> Double? {
         let calendar = Calendar.current
         let now = Date()
@@ -178,15 +188,5 @@ final class ExpenseViewModel {
             .reduce(0) { $0 + $1.amount }
 
         return budget.monthlyLimit > 0 ? spent / budget.monthlyLimit : nil
-    }
-
-    // MARK: - Formatted amount
-
-    func formatAmount(_ amount: Double, currency: String = "IRR") -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.locale = Locale(identifier: "fa_IR")
-        let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(Int(amount))"
-        return "\(formatted) تومان"
     }
 }

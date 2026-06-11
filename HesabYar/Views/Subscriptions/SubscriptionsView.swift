@@ -3,6 +3,7 @@ import SwiftData
 import Charts
 
 struct SubscriptionsView: View {
+    @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Query private var subscriptions: [SubscriptionRecord]
     @State private var showingAdd = false
@@ -54,8 +55,8 @@ struct SubscriptionsView: View {
                     .padding(.top, 8)
                 }
             }
-            .navigationTitle("اشتراک‌ها")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle(settings.t("Subscriptions", "اشتراک‌ها"))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

@@ -3,13 +3,31 @@ import Foundation
 // MARK: - AI Provider
 
 enum AIProvider: String, CaseIterable {
-    case claude = "Claude (Anthropic)"
-    case openai = "OpenAI (ChatGPT)"
+    case claude = "claude"
+    case openai = "openai"
+    case gemini = "gemini"
+
+    var displayName: String {
+        switch self {
+        case .claude: return "Claude (Anthropic)"
+        case .openai: return "ChatGPT (OpenAI)"
+        case .gemini: return "Gemini (Google)"
+        }
+    }
+
+    var shortName: String {
+        switch self {
+        case .claude: return "Claude"
+        case .openai: return "ChatGPT"
+        case .gemini: return "Gemini"
+        }
+    }
 
     var icon: String {
         switch self {
         case .claude: return "brain"
         case .openai: return "bubble.left.and.bubble.right.fill"
+        case .gemini: return "sparkles"
         }
     }
 
@@ -17,6 +35,7 @@ enum AIProvider: String, CaseIterable {
         switch self {
         case .claude: return "Anthropic API Key"
         case .openai: return "OpenAI API Key"
+        case .gemini: return "Google AI API Key"
         }
     }
 
@@ -24,17 +43,26 @@ enum AIProvider: String, CaseIterable {
         switch self {
         case .claude: return "sk-ant-"
         case .openai: return "sk-"
+        case .gemini: return "AI"
+        }
+    }
+
+    var apiKeyPlaceholder: String {
+        switch self {
+        case .claude: return "sk-ant-..."
+        case .openai: return "sk-..."
+        case .gemini: return "AIza..."
         }
     }
 }
 
-// MARK: - AI Service (Online + Offline)
+// MARK: - AI Service
 
 final class AIService {
     static let shared = AIService()
     private init() {}
 
-    // MARK: - Online: Claude API
+    // MARK: - Claude
 
     func analyzeWithClaude(prompt: String, apiKey: String) async throws -> String {
         let url = URL(string: "https://api.anthropic.com/v1/messages")!
@@ -48,11 +76,7 @@ final class AIService {
         let body: [String: Any] = [
             "model": "claude-haiku-4-5-20251001",
             "max_tokens": 1024,
-            "system": """
-            تو یک دستیار مالی هوشمند هستی که به فارسی کمک می‌کنی.
-            اطلاعات هزینه‌های کاربر را تحلیل کن و توصیه‌های مفید بده.
-            پاسخ‌هایت کوتاه، واضح و کاربردی باشند.
-            """,
+            "system": "You are a smart financial assistant. Analyze the user's expense data and provide concise, actionable advice. Keep responses clear and helpful.",
             "messages": [["role": "user", "content": prompt]]
         ]
 
@@ -61,16 +85,16 @@ final class AIService {
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            let msg = (errorJson?["error"] as? [String: Any])?["message"] as? String ?? "خطای ناشناخته"
+            let msg = (errorJson?["error"] as? [String: Any])?["message"] as? String ?? "Unknown error"
             throw AIError.apiError(msg)
         }
 
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let content = (json?["content"] as? [[String: Any]])?.first
-        return content?["text"] as? String ?? "پاسخی دریافت نشد"
+        return content?["text"] as? String ?? "No response received"
     }
 
-    // MARK: - Online: OpenAI API
+    // MARK: - OpenAI
 
     func analyzeWithOpenAI(prompt: String, apiKey: String, model: String = "gpt-4o-mini") async throws -> String {
         let url = URL(string: "https://api.openai.com/v1/chat/completions")!
@@ -84,7 +108,7 @@ final class AIService {
             "model": model,
             "max_tokens": 1024,
             "messages": [
-                ["role": "system", "content": "تو یک دستیار مالی هوشمند هستی که به فارسی پاسخ می‌دهی. اطلاعات مالی کاربر را تحلیل کن و توصیه‌های مفید بده."],
+                ["role": "system", "content": "You are a smart financial assistant. Analyze the user's expense data and provide concise, actionable advice."],
                 ["role": "user", "content": prompt]
             ]
         ]
@@ -94,24 +118,55 @@ final class AIService {
 
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            let msg = ((errorJson?["error"] as? [String: Any])?["message"] as? String) ?? "خطای OpenAI"
+            let msg = ((errorJson?["error"] as? [String: Any])?["message"] as? String) ?? "OpenAI error"
             throw AIError.apiError(msg)
         }
 
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let choices = json?["choices"] as? [[String: Any]]
         let message = choices?.first?["message"] as? [String: Any]
-        return message?["content"] as? String ?? "پاسخی دریافت نشد"
+        return message?["content"] as? String ?? "No response received"
     }
 
-    // MARK: - Unified call
+    // MARK: - Gemini
+
+    func analyzeWithGemini(prompt: String, apiKey: String) async throws -> String {
+        let urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\(apiKey)"
+        let url = URL(string: urlStr)!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
+
+        let body: [String: Any] = [
+            "contents": [["parts": [["text": prompt]]]],
+            "systemInstruction": ["parts": [["text": "You are a smart financial assistant. Analyze the user's expense data and provide concise, actionable advice."]]],
+            "generationConfig": ["maxOutputTokens": 1024]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            let msg = (errorJson?["error"] as? [String: Any])?["message"] as? String ?? "Gemini error"
+            throw AIError.apiError(msg)
+        }
+
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let candidates = json?["candidates"] as? [[String: Any]]
+        let content = candidates?.first?["content"] as? [String: Any]
+        let parts = content?["parts"] as? [[String: Any]]
+        return parts?.first?["text"] as? String ?? "No response received"
+    }
+
+    // MARK: - Unified Call
 
     func analyze(prompt: String, provider: AIProvider, apiKey: String, openAIModel: String = "gpt-4o-mini") async throws -> String {
         switch provider {
-        case .claude:
-            return try await analyzeWithClaude(prompt: prompt, apiKey: apiKey)
-        case .openai:
-            return try await analyzeWithOpenAI(prompt: prompt, apiKey: apiKey, model: openAIModel)
+        case .claude: return try await analyzeWithClaude(prompt: prompt, apiKey: apiKey)
+        case .openai: return try await analyzeWithOpenAI(prompt: prompt, apiKey: apiKey, model: openAIModel)
+        case .gemini: return try await analyzeWithGemini(prompt: prompt, apiKey: apiKey)
         }
     }
 
@@ -136,8 +191,8 @@ final class AIService {
         if let topCat = categoryTotals.max(by: { $0.value < $1.value }) {
             let pct = totalThisMonth > 0 ? Int((topCat.value / totalThisMonth) * 100) : 0
             insights.append(FinancialInsight(
-                title: "بیشترین هزینه",
-                detail: "این ماه \(pct)٪ از هزینه‌هایت برای \(topCat.key.displayName) بوده",
+                title: AppSettings.shared.t("Top Spending", "بیشترین هزینه"),
+                detail: AppSettings.shared.t("\(pct)% of this month's spending was on \(topCat.key.displayName)", "این ماه \(pct)٪ هزینه برای \(topCat.key.displayName) بوده"),
                 icon: topCat.key.icon, type: .info, amount: topCat.value, category: topCat.key
             ))
         }
@@ -145,8 +200,8 @@ final class AIService {
         let recurringTotal = expenses.filter { $0.isRecurring }.reduce(0) { $0 + $1.amount }
         if recurringTotal > 0 {
             insights.append(FinancialInsight(
-                title: "هزینه‌های ثابت",
-                detail: "ماهانه \(recurringTotal.formattedCompact) تومان هزینه ثابت داری",
+                title: AppSettings.shared.t("Recurring Costs", "هزینه‌های ثابت"),
+                detail: AppSettings.shared.t("You have \(recurringTotal.formattedCompact) in recurring monthly expenses", "ماهانه \(recurringTotal.formattedCompact) هزینه ثابت داری"),
                 icon: "arrow.clockwise.circle.fill", type: .info, amount: recurringTotal
             ))
         }
@@ -158,8 +213,8 @@ final class AIService {
 
         if projected > totalThisMonth * 1.3 {
             insights.append(FinancialInsight(
-                title: "پیش‌بینی ماهانه",
-                detail: "با این روند تا آخر ماه ~\(projected.formattedCompact) تومان خرج می‌کنی",
+                title: AppSettings.shared.t("Monthly Forecast", "پیش‌بینی ماهانه"),
+                detail: AppSettings.shared.t("At this rate, you'll spend ~\(projected.formattedCompact) this month", "با این روند تا آخر ماه ~\(projected.formattedCompact) خرج می‌کنی"),
                 icon: "chart.line.uptrend.xyaxis", type: .warning, amount: projected
             ))
         }
@@ -167,8 +222,8 @@ final class AIService {
         let subExpenses = monthly.filter { $0.category == .subscriptions }
         if subExpenses.count > 3 {
             insights.append(FinancialInsight(
-                title: "اشتراک‌های زیاد",
-                detail: "\(subExpenses.count) اشتراک فعال داری — کدوم‌ها واقعاً لازمه؟",
+                title: AppSettings.shared.t("Many Subscriptions", "اشتراک‌های زیاد"),
+                detail: AppSettings.shared.t("You have \(subExpenses.count) active subscriptions — which ones do you really need?", "\(subExpenses.count) اشتراک فعال داری — کدوم‌ها واقعاً لازمه؟"),
                 icon: "arrow.clockwise.circle", type: .tip
             ))
         }
@@ -194,22 +249,23 @@ final class AIService {
         for e in monthly { catTotals[e.category, default: 0] += e.amount }
 
         var lines = [
-            "اطلاعات مالی این ماه:",
-            "تعداد تراکنش: \(monthly.count)",
-            "مجموع هزینه: \(total.formattedCompact) تومان",
-            "\nبر اساس دسته‌بندی:"
+            "My financial data this month:",
+            "Transactions: \(monthly.count)",
+            "Total spending: \(total.formattedCompact)",
+            "\nBy category:"
         ]
         for (cat, amt) in catTotals.sorted(by: { $0.value > $1.value }) {
-            lines.append("• \(cat.displayName): \(amt.formattedCompact) تومان")
+            lines.append("• \(cat.displayName): \(amt.formattedCompact)")
         }
 
         if !subscriptions.isEmpty {
-            let subTotal = subscriptions.filter { $0.isActive }.reduce(0) { $0 + $1.monthlyEquivalent }
-            lines.append("\nاشتراک‌های فعال: \(subscriptions.filter { $0.isActive }.count)")
-            lines.append("هزینه ماهانه اشتراک‌ها: \(subTotal.formattedCompact) تومان")
+            let activeSubs = subscriptions.filter { $0.isActive }
+            let subTotal = activeSubs.reduce(0) { $0 + $1.monthlyEquivalent }
+            lines.append("\nActive subscriptions: \(activeSubs.count)")
+            lines.append("Monthly subscription cost: \(subTotal.formattedCompact)")
         }
 
-        lines.append("\nسوال: \(question)")
+        lines.append("\nQuestion: \(question)")
         return lines.joined(separator: "\n")
     }
 
@@ -238,8 +294,8 @@ enum AIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .apiError(let msg): return msg
-        case .networkError: return "خطا در اتصال به اینترنت"
-        case .invalidKey: return "کلید API نامعتبر است"
+        case .networkError: return "Network connection error"
+        case .invalidKey: return "Invalid API key"
         }
     }
 }

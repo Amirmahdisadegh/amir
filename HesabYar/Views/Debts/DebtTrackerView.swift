@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct DebtTrackerView: View {
+    @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Query private var debts: [Debt]
     @State private var showingAddDebt = false
@@ -65,8 +66,8 @@ struct DebtTrackerView: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("مدیریت بدهی‌ها")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle(settings.t("Debts", "مدیریت بدهی‌ها"))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

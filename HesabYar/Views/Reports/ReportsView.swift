@@ -3,6 +3,7 @@ import SwiftData
 import Charts
 
 struct ReportsView: View {
+    @Environment(AppSettings.self) private var settings
     @Query private var expenses: [Expense]
     @State private var selectedPeriod: ReportPeriod = .thisMonth
     @State private var chartType: ChartType = .bar
@@ -54,7 +55,7 @@ struct ReportsView: View {
                 .padding(.bottom, 24)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("گزارش‌ها")
+            .navigationTitle(settings.t("Reports", "گزارش‌ها"))
             .navigationBarTitleDisplayMode(.large)
         }
         .sheet(isPresented: $showingShareSheet) {

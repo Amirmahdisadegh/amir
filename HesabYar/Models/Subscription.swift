@@ -4,12 +4,12 @@ import SwiftUI
 // MARK: - Billing Cycle
 
 enum BillingCycle: String, Codable, CaseIterable {
-    case weekly    = "هفتگی"
-    case biweekly  = "دو هفته‌ای"
-    case monthly   = "ماهانه"
-    case quarterly = "سه‌ماهه"
-    case biannual  = "شش‌ماهه"
-    case yearly    = "سالانه"
+    case weekly    = "Weekly"
+    case biweekly  = "Bi-weekly"
+    case monthly   = "Monthly"
+    case quarterly = "Quarterly"
+    case biannual  = "Bi-annual"
+    case yearly    = "Yearly"
 
     var intervalDays: Int {
         switch self {
@@ -22,15 +22,19 @@ enum BillingCycle: String, Codable, CaseIterable {
         }
     }
 
-    var shortLabel: String {
-        switch self {
-        case .weekly:    return "هفتگی"
-        case .biweekly:  return "دو هفته"
-        case .monthly:   return "ماهانه"
-        case .quarterly: return "سه‌ماهه"
-        case .biannual:  return "شش‌ماهه"
-        case .yearly:    return "سالانه"
-        }
+    var shortLabel: String { rawValue }
+
+    var displayName: String {
+        AppSettings.shared.t(rawValue, {
+            switch self {
+            case .weekly:    return "هفتگی"
+            case .biweekly:  return "دو هفته‌ای"
+            case .monthly:   return "ماهانه"
+            case .quarterly: return "سه‌ماهه"
+            case .biannual:  return "شش‌ماهه"
+            case .yearly:    return "سالانه"
+            }
+        }())
     }
 }
 
@@ -48,14 +52,14 @@ struct KnownService: Identifiable, Hashable {
     }
 
     enum ServiceCategory: String, CaseIterable {
-        case video       = "ویدیو"
-        case music       = "موسیقی"
-        case gaming      = "بازی"
-        case productivity = "بهره‌وری"
-        case cloud       = "فضای ابری"
-        case news        = "خبر و کتاب"
-        case iranian     = "ایرانی"
-        case other       = "سایر"
+        case video       = "Video"
+        case music       = "Music"
+        case gaming      = "Gaming"
+        case productivity = "Productivity"
+        case cloud       = "Cloud"
+        case news        = "News"
+        case iranian     = "Iranian"
+        case other       = "Other"
 
         var icon: String {
             switch self {
@@ -230,7 +234,7 @@ final class SubscriptionRecord {
         billingCycle: BillingCycle = .monthly,
         startDate: Date = Date(),
         notifyBeforeDays: Int = 3,
-        paymentMethod: String = "کارت بانکی",
+        paymentMethod: String = "Bank Card",
         autoRenew: Bool = true
     ) {
         self.id = UUID()
