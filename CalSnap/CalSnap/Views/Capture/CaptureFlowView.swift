@@ -15,7 +15,7 @@ struct CaptureFlowView: View {
 
     var body: some View {
         ZStack {
-            Theme.background(scheme).ignoresSafeArea()
+            AuroraBackground()
 
             switch vm.phase {
             case .choosing:  chooser

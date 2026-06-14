@@ -2,7 +2,8 @@ import SwiftUI
 
 // MARK: - Reusable view styling
 
-/// Soft, elevated card surface used across the app.
+/// Frosted-glass card surface used across the app. Reads as translucent glass
+/// over the colorful aurora background, with a bright edge highlight.
 struct CardSurface: ViewModifier {
     @Environment(\.colorScheme) private var scheme
     var padding: CGFloat = Theme.Space.md
@@ -13,16 +14,18 @@ struct CardSurface: ViewModifier {
             .padding(padding)
             .background(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(Theme.surface(scheme))
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(Theme.separator(scheme), lineWidth: 1)
+                    .fill(scheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.18))
             )
-            .shadow(
-                color: scheme == .dark ? .clear : Color.black.opacity(0.05),
-                radius: 14, x: 0, y: 8
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(Theme.glassBorder(scheme), lineWidth: 1)
             )
+            .shadow(color: Color.black.opacity(scheme == .dark ? 0.35 : 0.10),
+                    radius: 18, x: 0, y: 10)
     }
 }
 

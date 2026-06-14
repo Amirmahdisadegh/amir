@@ -50,7 +50,13 @@ struct StatPill: View {
             }
             Spacer(minLength: 0)
         }
-        .cardSurface(padding: 12, radius: Theme.Radius.md)
+        .padding(12)
+        .background(Theme.chipFill(scheme),
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                .strokeBorder(Theme.glassBorder(scheme), lineWidth: 1)
+        )
     }
 }
 

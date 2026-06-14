@@ -8,7 +8,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            Theme.heroGradient(scheme).ignoresSafeArea()
+            AuroraBackground()
             VStack {
                 TabView(selection: $page) {
                     welcome.tag(0)

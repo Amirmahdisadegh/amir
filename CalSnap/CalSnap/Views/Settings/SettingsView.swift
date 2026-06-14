@@ -63,7 +63,6 @@ struct SettingsView: View {
             }
             .padding(.horizontal, Theme.Space.md)
         }
-        .background(Theme.background(scheme).ignoresSafeArea())
         .scrollIndicators(.hidden)
         .sheet(isPresented: $showProfile) { ProfileEditorView() }
         .sheet(isPresented: $showAPIKey) { APIKeyView() }
@@ -188,13 +187,19 @@ struct SettingsView: View {
     }
 
     private func toggleHealth(_ enabled: Bool) {
-        if enabled {
-            Task {
-                try? await HealthKitService.shared.requestAuthorization()
-                await MainActor.run { appState.healthSyncEnabled = true }
-            }
-        } else {
+        guard enabled else {
             appState.healthSyncEnabled = false
+            return
+        }
+        guard HealthKitService.shared.isAvailable else { return }
+        Task {
+            do {
+                try await HealthKitService.shared.requestAuthorization()
+                await MainActor.run { appState.healthSyncEnabled = true }
+            } catch {
+                // Authorization not granted / unavailable — leave the toggle off.
+                await MainActor.run { appState.healthSyncEnabled = false }
+            }
         }
     }
 }

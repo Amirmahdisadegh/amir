@@ -61,7 +61,6 @@ struct InsightsView: View {
             }
             .padding(.horizontal, Theme.Space.md)
         }
-        .background(Theme.background(scheme).ignoresSafeArea())
         .scrollIndicators(.hidden)
     }
 

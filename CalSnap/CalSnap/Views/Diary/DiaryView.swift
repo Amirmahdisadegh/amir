@@ -37,7 +37,6 @@ struct DiaryView: View {
             }
             .padding(.horizontal, Theme.Space.md)
         }
-        .background(Theme.background(scheme).ignoresSafeArea())
         .scrollIndicators(.hidden)
         .sheet(item: $selectedEntry) { FoodDetailView(entry: $0) }
     }

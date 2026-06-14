@@ -12,23 +12,44 @@ enum Theme {
     // with a warm coral accent reserved for calories.
     enum Palette {
         // Brand
-        static let brand = Color("BrandGreen", bundle: nil, fallback: Color(hex: 0x34D399))
+        static let brand = Color(hex: 0x10D9A3)      // vivid emerald-mint
         static let brandDeep = Color(hex: 0x059669)
         static let brandSoft = Color(hex: 0x6EE7B7)
 
+        // Aurora accent colors used behind the glass
+        static let aurora1 = Color(hex: 0x2DD4BF)    // teal
+        static let aurora2 = Color(hex: 0x38BDF8)    // sky
+        static let aurora3 = Color(hex: 0xA3E635)    // lime
+        static let aurora4 = Color(hex: 0xC084FC)    // violet
+
         // Calories / energy accent
-        static let calorie = Color(hex: 0xFF6B5C)
-        static let calorieSoft = Color(hex: 0xFFB199)
+        static let calorie = Color(hex: 0xFF6B6B)
+        static let calorieSoft = Color(hex: 0xFFA07A)
 
         // Macro accents
-        static let protein = Color(hex: 0x5B8DEF)   // blue
-        static let carbs   = Color(hex: 0xF6A609)   // amber
+        static let protein = Color(hex: 0x60A5FA)   // blue
+        static let carbs   = Color(hex: 0xFBBF24)   // amber
         static let fat     = Color(hex: 0xC084FC)   // violet
 
         // Semantic
         static let success = Color(hex: 0x22C55E)
         static let warning = Color(hex: 0xF59E0B)
-        static let danger  = Color(hex: 0xEF4444)
+        static let danger  = Color(hex: 0xF87171)
+    }
+
+    /// Glass tint used for material card borders (bright edge highlight).
+    static func glassBorder(_ scheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: scheme == .dark
+                ? [Color.white.opacity(0.25), Color.white.opacity(0.05)]
+                : [Color.white.opacity(0.9), Color.white.opacity(0.3)],
+            startPoint: .topLeading, endPoint: .bottomTrailing
+        )
+    }
+
+    /// Subtle translucent fill for chips placed on top of glass cards.
+    static func chipFill(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.55)
     }
 
     // MARK: Adaptive surfaces

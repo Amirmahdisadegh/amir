@@ -41,7 +41,6 @@ struct HomeView: View {
             .padding(.horizontal, Theme.Space.md)
             .padding(.top, Theme.Space.sm)
         }
-        .background(Theme.heroGradient(scheme).ignoresSafeArea())
         .scrollIndicators(.hidden)
         .task { await refreshHealth() }
         .refreshable { await refreshHealth() }

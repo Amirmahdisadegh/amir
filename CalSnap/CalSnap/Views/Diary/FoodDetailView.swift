@@ -54,7 +54,7 @@ struct FoodDetailView: View {
                 }
                 .padding(Theme.Space.md)
             }
-            .background(Theme.background(scheme).ignoresSafeArea())
+            .background(AuroraBackground())
             .navigationTitle(entry.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

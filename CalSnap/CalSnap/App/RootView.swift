@@ -28,6 +28,8 @@ struct MainTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            AuroraBackground()
+
             Group {
                 switch selection {
                 case .home:     HomeView()
@@ -44,7 +46,6 @@ struct MainTabView: View {
                 showCapture = true
             }
         }
-        .background(Theme.background(scheme).ignoresSafeArea())
         .fullScreenCover(isPresented: $showCapture) {
             CaptureFlowView()
         }
@@ -85,14 +86,13 @@ struct CustomTabBar: View {
         .padding(.top, 10)
         .padding(.bottom, 8)
         .background(
-            Theme.surface(scheme)
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .shadow(color: scheme == .dark ? .clear : .black.opacity(0.08),
-                        radius: 18, y: 8)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(scheme == .dark ? 0.4 : 0.12), radius: 18, y: 8)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Theme.separator(scheme), lineWidth: 1)
+                .strokeBorder(Theme.glassBorder(scheme), lineWidth: 1)
         )
         .padding(.horizontal, Theme.Space.md)
         .padding(.bottom, 6)

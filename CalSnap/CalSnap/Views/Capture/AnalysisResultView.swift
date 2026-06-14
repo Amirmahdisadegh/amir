@@ -37,7 +37,7 @@ struct AnalysisResultView: View {
             // Sticky save bar
             saveBar
         }
-        .background(Theme.background(scheme).ignoresSafeArea())
+        .background(AuroraBackground())
     }
 
     // MARK: Hero
@@ -177,7 +177,7 @@ struct AnalysisResultView: View {
             .buttonStyle(PrimaryButtonStyle())
             .padding(Theme.Space.md)
         }
-        .background(Theme.surface(scheme))
+        .background(.ultraThinMaterial)
     }
 }
 
