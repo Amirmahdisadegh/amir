@@ -1,0 +1,149 @@
+/* Tabs */
+"tab.home" = "Home";
+"tab.diary" = "Diary";
+"tab.insights" = "Insights";
+"tab.settings" = "Settings";
+
+/* Meals */
+"meal.breakfast" = "Breakfast";
+"meal.lunch" = "Lunch";
+"meal.dinner" = "Dinner";
+"meal.snack" = "Snack";
+
+/* Macros */
+"macro.protein" = "Protein";
+"macro.carbs" = "Carbs";
+"macro.fat" = "Fat";
+
+/* Ring & stats */
+"label.remaining" = "remaining";
+"label.over" = "over";
+"stat.eaten" = "Eaten";
+"stat.burned" = "Burned";
+"stat.goal" = "Goal";
+
+/* Greetings */
+"greeting.morning" = "Good morning";
+"greeting.afternoon" = "Good afternoon";
+"greeting.evening" = "Good evening";
+"greeting.night" = "Good night";
+
+/* Home */
+"home.todaysMeals" = "Today's Meals";
+"empty.today.title" = "No meals yet";
+"empty.today.message" = "Tap the camera to snap your first meal of the day.";
+
+/* Diary */
+"diary.title" = "Diary";
+"empty.diary.title" = "Your diary is empty";
+"empty.diary.message" = "Logged meals will appear here, grouped by day.";
+"date.today" = "Today";
+"date.yesterday" = "Yesterday";
+
+/* Detail */
+"detail.synced" = "Synced to Apple Health";
+
+/* Actions */
+"action.delete" = "Delete";
+"action.done" = "Done";
+"action.cancel" = "Cancel";
+"action.save" = "Save";
+"action.retry" = "Try again";
+
+/* Capture */
+"capture.title" = "Add a Meal";
+"capture.subtitle" = "Snap a photo or video and let AI do the counting.";
+"capture.photo" = "Take Photo";
+"capture.photo.sub" = "Point at your meal";
+"capture.video" = "Record Video";
+"capture.video.sub" = "Pan across the table";
+"capture.library" = "Choose from Library";
+"capture.library.sub" = "Pick a photo or clip";
+"capture.hint" = "Add a note (optional)";
+"capture.noKey" = "No Claude API key yet — results will be rough estimates. Add a key in Settings.";
+"capture.failed" = "Analysis failed";
+
+/* Analyzing */
+"analyzing.title" = "Analyzing your meal…";
+"analyzing.subtitle" = "AI is identifying foods and estimating calories.";
+
+/* Result */
+"result.title" = "Review";
+"result.mealName" = "Meal name";
+"result.estimateBanner" = "Offline estimate — add a Claude API key for accurate recognition.";
+"result.noItems" = "No items. Add one below.";
+"result.addItem" = "Add item";
+"result.save" = "Save Meal";
+"item.name" = "Food";
+"item.qty" = "Portion";
+
+/* Insights */
+"insights.title" = "Insights";
+"insights.avg" = "7-day average";
+"insights.last7" = "Last 7 days";
+"insights.goalLine" = "Goal";
+"insights.macroSplit" = "Macro split";
+
+/* Settings */
+"settings.title" = "Settings";
+"settings.appearance" = "Appearance";
+"settings.profile" = "Profile & Goal";
+"settings.health" = "Apple Health";
+"settings.health.sub" = "Sync calories burned & meals";
+"settings.apiKey" = "Claude API Key";
+"settings.apiKey.set" = "Configured · tap to change";
+"settings.apiKey.unset" = "Not set · using offline estimates";
+"settings.dailyGoal" = "Daily Goal";
+"settings.about" = "AI-powered calorie counting from a photo or video.";
+
+/* Theme */
+"theme.system" = "System";
+"theme.light" = "Light";
+"theme.dark" = "Dark";
+
+/* Profile */
+"profile.basics" = "Basics";
+"profile.name" = "Name";
+"profile.sex" = "Sex";
+"profile.body" = "Body";
+"profile.height" = "Height";
+"profile.weight" = "Weight";
+"profile.activity" = "Activity & Goal";
+"profile.activityLevel" = "Activity level";
+"profile.goal" = "Goal";
+"profile.manualGoal" = "Set goal manually";
+"sex.male" = "Male";
+"sex.female" = "Female";
+"activity.sedentary" = "Sedentary";
+"activity.light" = "Lightly active";
+"activity.moderate" = "Moderately active";
+"activity.active" = "Very active";
+"activity.athlete" = "Athlete";
+"goal.lose" = "Lose";
+"goal.maintain" = "Maintain";
+"goal.gain" = "Gain";
+"profile.age %lld" = "Age %lld";
+"profile.calorieTarget %lld" = "Target %lld kcal";
+"profile.computedGoal %lld" = "Recommended target: %lld kcal/day";
+
+/* API key */
+"apikey.heading" = "Connect Claude AI";
+"apikey.body" = "CalSnap sends your meal photos to Claude to recognize foods and estimate nutrition.";
+"apikey.placeholder" = "sk-ant-…";
+"apikey.step1" = "Go to console.anthropic.com";
+"apikey.step2" = "Create an API key";
+"apikey.step3" = "Paste it above and save";
+"apikey.privacy" = "Stored securely in your device Keychain.";
+"apikey.remove" = "Remove key";
+
+/* Onboarding */
+"onb.welcome.body" = "Snap your food. Let AI count the calories. Reach your goals.";
+"onb.snap.title" = "Snap & Recognize";
+"onb.snap.body" = "Take a photo or video of any meal — AI identifies the food and estimates calories and macros.";
+"onb.health.title" = "Apple Health";
+"onb.health.body" = "Connect Apple Health to factor in calories you burn for an accurate daily net.";
+"onb.profile.title" = "About you";
+"onb.profile.body" = "We'll use this to recommend a daily calorie goal.";
+"onb.profile.goalPreview %lld" = "Recommended: %lld kcal/day";
+"onb.next" = "Continue";
+"onb.start" = "Get Started";
