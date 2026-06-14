@@ -22,8 +22,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.amirmahdisadegh.calsnap
         SWIFT_VERSION: "5.9"
         CODE_SIGN_STYLE: Automatic
-        CODE_SIGNING_REQUIRED: NO
-        CODE_SIGNING_ALLOWED: NO
+        # Set your team in Xcode (Signing & Capabilities) or put the ID here:
+        # DEVELOPMENT_TEAM: ABCDE12345
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: CalSnap/Info.plist
         MARKETING_VERSION: "1.0"
