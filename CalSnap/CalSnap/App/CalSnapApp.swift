@@ -4,11 +4,7 @@ import SwiftData
 @main
 struct CalSnapApp: App {
     @State private var appState = AppState()
-    private let container: ModelContainer
-
-    init() {
-        container = Self.makeContainer()
-    }
+    private let container: ModelContainer = CalSnapApp.makeContainer()
 
     var body: some Scene {
         WindowGroup {
