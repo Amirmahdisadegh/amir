@@ -35,3 +35,16 @@ targets:
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
     info:
       path: CalSnap/Info.plist
+      properties:
+        CFBundleDisplayName: CalSnap
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        LSRequiresIPhoneOS: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: CalSnap uses the camera to take photos and videos of your meals so AI can recognize the food and estimate calories.
+        NSPhotoLibraryUsageDescription: CalSnap lets you pick photos or videos of your meals from your library for AI analysis.
+        ITSAppUsesNonExemptEncryption: false
