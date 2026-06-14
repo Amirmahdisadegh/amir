@@ -6,6 +6,7 @@ struct SettingsView: View {
 
     @State private var showProfile = false
     @State private var showAPIKey = false
+    @State private var showBurned = false
 
     var body: some View {
         @Bindable var state = appState
@@ -33,17 +34,13 @@ struct SettingsView: View {
                 }
                 .cardSurface(padding: 6)
 
-                // Apple Health
+                // Activity burn (manual)
                 VStack(spacing: 0) {
-                    Toggle(isOn: Binding(
-                        get: { state.healthSyncEnabled },
-                        set: { newValue in toggleHealth(newValue) }
-                    )) {
-                        rowLabel(icon: "heart.fill", tint: Theme.Palette.danger,
-                                 title: "settings.health", subtitle: "settings.health.sub")
+                    settingsRow(icon: "flame.fill", tint: Theme.Palette.warning,
+                                title: "settings.burned",
+                                subtitle: "settings.burned.sub") {
+                        showBurned = true
                     }
-                    .tint(Theme.Palette.brand)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
                 }
                 .cardSurface(padding: 6)
 
@@ -66,6 +63,9 @@ struct SettingsView: View {
         .scrollIndicators(.hidden)
         .sheet(isPresented: $showProfile) { ProfileEditorView() }
         .sheet(isPresented: $showAPIKey) { APIKeyView() }
+        .sheet(isPresented: $showBurned) {
+            BurnedEditorView().presentationDetents([.height(280)])
+        }
     }
 
     // MARK: Goal summary card
@@ -182,23 +182,6 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.textPrimary(scheme))
                 Text(subtitle).font(Theme.Font.caption(11))
                     .foregroundStyle(Theme.textSecondary(scheme))
-            }
-        }
-    }
-
-    private func toggleHealth(_ enabled: Bool) {
-        guard enabled else {
-            appState.healthSyncEnabled = false
-            return
-        }
-        guard HealthKitService.shared.isAvailable else { return }
-        Task {
-            do {
-                try await HealthKitService.shared.requestAuthorization()
-                await MainActor.run { appState.healthSyncEnabled = true }
-            } catch {
-                // Authorization not granted / unavailable — leave the toggle off.
-                await MainActor.run { appState.healthSyncEnabled = false }
             }
         }
     }

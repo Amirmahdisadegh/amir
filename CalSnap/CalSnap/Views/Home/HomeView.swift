@@ -19,15 +19,15 @@ struct HomeView: View {
     @Environment(\.colorScheme) private var scheme
     @Query(sort: \FoodEntry.date, order: .reverse) private var allEntries: [FoodEntry]
 
-    @State private var burned: Int = 0
-    @State private var activeBurned: Int = 0
     @State private var selectedEntry: FoodEntry?
+    @State private var showBurnedEditor = false
 
     private var todayEntries: [FoodEntry] {
         allEntries.filter { $0.date.isSameDay(as: .now) }
     }
     private var totals: DailyTotals { DailyTotals(todayEntries) }
     private var profile: UserProfile { appState.profile }
+    private var burned: Int { appState.burned() }
 
     var body: some View {
         ScrollView {
@@ -42,10 +42,12 @@ struct HomeView: View {
             .padding(.top, Theme.Space.sm)
         }
         .scrollIndicators(.hidden)
-        .task { await refreshHealth() }
-        .refreshable { await refreshHealth() }
         .sheet(item: $selectedEntry) { entry in
             FoodDetailView(entry: entry)
+        }
+        .sheet(isPresented: $showBurnedEditor) {
+            BurnedEditorView()
+                .presentationDetents([.height(280)])
         }
     }
 
@@ -86,16 +88,21 @@ struct HomeView: View {
         VStack(spacing: Theme.Space.md) {
             CalorieRing(consumed: totals.calories,
                         goal: profile.calorieGoal,
-                        burned: appState.healthSyncEnabled ? burned : 0)
+                        burned: burned)
                 .frame(height: 210)
                 .padding(.vertical, 4)
 
             HStack(spacing: 10) {
                 StatPill(icon: "fork.knife", label: "stat.eaten",
                          value: totals.calories.grouped, tint: Theme.Palette.calorie)
-                StatPill(icon: "flame.fill", label: "stat.burned",
-                         value: (appState.healthSyncEnabled ? burned : 0).grouped,
-                         tint: Theme.Palette.warning)
+                Button {
+                    Haptics.tap()
+                    showBurnedEditor = true
+                } label: {
+                    StatPill(icon: "flame.fill", label: "stat.burned",
+                             value: burned.grouped, tint: Theme.Palette.warning)
+                }
+                .buttonStyle(.plain)
                 StatPill(icon: "target", label: "stat.goal",
                          value: profile.calorieGoal.grouped, tint: Theme.Palette.brand)
             }
@@ -138,16 +145,6 @@ struct HomeView: View {
         }
     }
 
-    // MARK: Health
-
-    private func refreshHealth() async {
-        guard appState.healthSyncEnabled else { return }
-        let total = await HealthKitService.shared.energyBurned()
-        let active = await HealthKitService.shared.activeEnergyBurned()
-        await MainActor.run {
-            withAnimation { burned = Int(total.rounded()); activeBurned = Int(active.rounded()) }
-        }
-    }
 }
 
 /// A single meal row used in lists.

@@ -71,9 +71,6 @@ final class FoodEntry {
     /// Recognized items encoded as JSON.
     var itemsData: Data?
 
-    /// Whether this entry was written to Apple Health.
-    var syncedToHealth: Bool
-
     init(title: String,
          meal: MealType,
          date: Date = .now,
@@ -86,7 +83,6 @@ final class FoodEntry {
         self.date = date
         self.imageData = imageData
         self.note = note
-        self.syncedToHealth = false
         self.itemsData = try? JSONEncoder().encode(items)
         self.calories = items.reduce(0) { $0 + $1.calories }
         self.proteinGrams = items.reduce(0) { $0 + $1.proteinGrams }

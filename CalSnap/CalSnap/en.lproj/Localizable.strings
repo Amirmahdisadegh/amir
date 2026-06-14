@@ -90,6 +90,10 @@
 "settings.profile" = "Profile & Goal";
 "settings.health" = "Apple Health";
 "settings.health.sub" = "Sync calories burned & meals";
+"settings.burned" = "Calories Burned";
+"settings.burned.sub" = "Set today's activity burn";
+"burned.title" = "Calories burned today";
+"burned.subtitle" = "From workouts & activity — added to your budget";
 "settings.apiKey" = "Claude API Key";
 "settings.apiKey.set" = "Configured · tap to change";
 "settings.apiKey.unset" = "Not set · using offline estimates";

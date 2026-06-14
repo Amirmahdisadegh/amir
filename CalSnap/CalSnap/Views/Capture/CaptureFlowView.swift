@@ -121,18 +121,6 @@ struct CaptureFlowView: View {
         let entry = vm.makeEntry()
         context.insert(entry)
         try? context.save()
-
-        if appState.healthSyncEnabled {
-            Task {
-                try? await HealthKitService.shared.saveMeal(
-                    calories: entry.calories,
-                    protein: entry.proteinGrams,
-                    carbs: entry.carbsGrams,
-                    fat: entry.fatGrams,
-                    date: entry.date)
-                entry.syncedToHealth = true
-            }
-        }
         Haptics.success()
         dismiss()
     }

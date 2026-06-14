@@ -41,10 +41,6 @@
 	<string>CalSnap uses the camera to take photos and videos of your meals so AI can recognize the food and estimate calories.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>CalSnap lets you pick photos or videos of your meals from your library for AI analysis.</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>CalSnap reads your active and resting energy burned from Apple Health to calculate your net daily calories.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>CalSnap can write the calories and nutrition from your logged meals to Apple Health.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

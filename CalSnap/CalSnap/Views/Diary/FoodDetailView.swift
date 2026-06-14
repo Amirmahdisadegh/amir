@@ -45,12 +45,6 @@ struct FoodDetailView: View {
                         }
                     }
                     .cardSurface()
-
-                    if entry.syncedToHealth {
-                        Label("detail.synced", systemImage: "heart.fill")
-                            .font(Theme.Font.caption(12))
-                            .foregroundStyle(Theme.Palette.danger)
-                    }
                 }
                 .padding(Theme.Space.md)
             }

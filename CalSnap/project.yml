@@ -35,8 +35,3 @@ targets:
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
     info:
       path: CalSnap/Info.plist
-    entitlements:
-      path: CalSnap/CalSnap.entitlements
-      properties:
-        com.apple.developer.healthkit: true
-        com.apple.developer.healthkit.access: []

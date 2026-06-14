@@ -2,8 +2,9 @@ import Foundation
 import SwiftUI
 import Observation
 
-/// App-wide observable state: user profile, theme preference and onboarding flag.
-/// Profile is persisted as JSON in UserDefaults; the Claude API key lives in the Keychain.
+/// App-wide observable state: user profile, theme preference, onboarding flag and
+/// a manually-entered "calories burned" value per day. Profile and burned values
+/// are persisted in UserDefaults; the Claude API key lives in the Keychain.
 @Observable
 final class AppState {
 
@@ -19,8 +20,9 @@ final class AppState {
         didSet { UserDefaults.standard.set(hasOnboarded, forKey: Keys.onboarded) }
     }
 
-    var healthSyncEnabled: Bool {
-        didSet { UserDefaults.standard.set(healthSyncEnabled, forKey: Keys.healthSync) }
+    /// Manually-entered calories burned, keyed by day (yyyy-MM-dd).
+    var burnedByDay: [String: Int] {
+        didSet { persistBurned() }
     }
 
     /// Whether a Claude API key is configured.
@@ -48,8 +50,32 @@ final class AppState {
         themeMode = AppThemeMode(rawValue: defaults.string(forKey: Keys.theme) ?? "")
             ?? .system
         hasOnboarded = defaults.bool(forKey: Keys.onboarded)
-        healthSyncEnabled = defaults.bool(forKey: Keys.healthSync)
+        if let data = defaults.data(forKey: Keys.burned),
+           let decoded = try? JSONDecoder().decode([String: Int].self, from: data) {
+            burnedByDay = decoded
+        } else {
+            burnedByDay = [:]
+        }
     }
+
+    // MARK: Burned calories per day
+
+    func burned(on day: Date = .now) -> Int {
+        burnedByDay[Self.dayKey(day)] ?? 0
+    }
+
+    func setBurned(_ value: Int, on day: Date = .now) {
+        burnedByDay[Self.dayKey(day)] = max(0, value)
+    }
+
+    private static func dayKey(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
+    }
+
+    // MARK: Persistence
 
     private func persistProfile() {
         if let data = try? JSONEncoder().encode(profile) {
@@ -57,11 +83,17 @@ final class AppState {
         }
     }
 
+    private func persistBurned() {
+        if let data = try? JSONEncoder().encode(burnedByDay) {
+            UserDefaults.standard.set(data, forKey: Keys.burned)
+        }
+    }
+
     private enum Keys {
         static let profile = "calsnap.profile"
         static let theme = "calsnap.theme"
         static let onboarded = "calsnap.onboarded"
-        static let healthSync = "calsnap.healthSync"
+        static let burned = "calsnap.burnedByDay"
         static let apiKey = "calsnap.claude.apikey"
     }
 }
