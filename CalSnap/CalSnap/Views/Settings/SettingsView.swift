@@ -1,12 +1,15 @@
 import SwiftUI
 
+enum SettingsSheet: String, Identifiable {
+    case profile, ai, burned, appearance
+    var id: String { rawValue }
+}
+
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var scheme
 
-    @State private var showProfile = false
-    @State private var showAPIKey = false
-    @State private var showBurned = false
+    @State private var activeSheet: SettingsSheet?
 
     var body: some View {
         @Bindable var state = appState
@@ -23,6 +26,24 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     SectionHeader("settings.appearance")
                     themePicker(state: state)
+                    Button {
+                        Haptics.tap()
+                        activeSheet = .appearance
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "paintbrush.pointed.fill")
+                                .foregroundStyle(Theme.Palette.brand)
+                            Text("settings.customize")
+                                .font(Theme.Font.title(15))
+                                .foregroundStyle(Theme.textPrimary(scheme))
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(Theme.textSecondary(scheme))
+                        }
+                        .padding(.top, 4)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .cardSurface()
 
@@ -30,7 +51,7 @@ struct SettingsView: View {
                 VStack(spacing: 0) {
                     settingsRow(icon: "person.fill", tint: Theme.Palette.brand,
                                 title: "settings.profile",
-                                subtitle: profileSubtitle) { showProfile = true }
+                                subtitle: profileSubtitle) { activeSheet = .profile }
                 }
                 .cardSurface(padding: 6)
 
@@ -39,7 +60,7 @@ struct SettingsView: View {
                     settingsRow(icon: "flame.fill", tint: Theme.Palette.warning,
                                 title: "settings.burned",
                                 subtitle: "settings.burned.sub") {
-                        showBurned = true
+                        activeSheet = .burned
                     }
                 }
                 .cardSurface(padding: 6)
@@ -49,7 +70,7 @@ struct SettingsView: View {
                     settingsRow(icon: "sparkles", tint: Theme.Palette.fat,
                                 title: "settings.ai",
                                 subtitle: aiSubtitle) {
-                        showAPIKey = true
+                        activeSheet = .ai
                     }
                 }
                 .cardSurface(padding: 6)
@@ -60,10 +81,13 @@ struct SettingsView: View {
             .padding(.horizontal, Theme.Space.md)
         }
         .scrollIndicators(.hidden)
-        .sheet(isPresented: $showProfile) { ProfileEditorView() }
-        .sheet(isPresented: $showAPIKey) { AISettingsView() }
-        .sheet(isPresented: $showBurned) {
-            BurnedEditorView().presentationDetents([.height(280)])
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .profile:    ProfileEditorView()
+            case .ai:         AISettingsView()
+            case .burned:     BurnedEditorView().presentationDetents([.height(280)])
+            case .appearance: AppearanceSettingsView()
+            }
         }
     }
 

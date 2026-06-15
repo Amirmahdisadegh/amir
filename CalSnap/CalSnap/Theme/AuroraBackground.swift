@@ -8,22 +8,41 @@ struct AuroraBackground: View {
     @State private var drift = false
 
     private var base: Color {
-        scheme == .dark ? Color(hex: 0x080A0F) : Color(hex: 0xEAEFF6)
+        switch Theme.backgroundStyle {
+        case .black: return .black
+        default:     return scheme == .dark ? Color(hex: 0x080A0F) : Color(hex: 0xEAEFF6)
+        }
+    }
+
+    /// Blob opacity multiplier per style (0 hides the blobs entirely).
+    private var blobStrength: Double {
+        switch Theme.backgroundStyle {
+        case .aurora:   return 1.0
+        case .vivid:    return 1.6
+        case .black:    return 0.55   // faint glow over pure black
+        case .graphite: return 0.0    // flat, no blobs
+        }
     }
 
     var body: some View {
         ZStack {
             base
-            blob(Theme.Palette.brand,   nx: -0.55, ny: -0.55, scale: 1.15,
-                 opacity: scheme == .dark ? 0.55 : 0.65, drifted: drift)
-            blob(Theme.Palette.aurora1, nx:  0.65, ny: -0.30, scale: 0.95,
-                 opacity: scheme == .dark ? 0.40 : 0.50, drifted: !drift)
-            blob(Theme.Palette.aurora2, nx:  0.55, ny:  0.55, scale: 1.05,
-                 opacity: scheme == .dark ? 0.35 : 0.45, drifted: drift)
-            blob(Theme.Palette.aurora3, nx: -0.50, ny:  0.65, scale: 0.85,
-                 opacity: scheme == .dark ? 0.30 : 0.45, drifted: !drift)
-            blob(Theme.Palette.aurora4, nx: -0.10, ny:  0.05, scale: 0.70,
-                 opacity: scheme == .dark ? 0.28 : 0.30, drifted: drift)
+            if Theme.backgroundStyle == .graphite {
+                Theme.heroGradient(scheme)
+            }
+            let k = blobStrength
+            if k > 0 {
+                blob(Theme.Palette.brand,   nx: -0.55, ny: -0.55, scale: 1.15,
+                     opacity: (scheme == .dark ? 0.55 : 0.65) * k, drifted: drift)
+                blob(Theme.Palette.aurora1, nx:  0.65, ny: -0.30, scale: 0.95,
+                     opacity: (scheme == .dark ? 0.40 : 0.50) * k, drifted: !drift)
+                blob(Theme.Palette.aurora2, nx:  0.55, ny:  0.55, scale: 1.05,
+                     opacity: (scheme == .dark ? 0.35 : 0.45) * k, drifted: drift)
+                blob(Theme.Palette.aurora3, nx: -0.50, ny:  0.65, scale: 0.85,
+                     opacity: (scheme == .dark ? 0.30 : 0.45) * k, drifted: !drift)
+                blob(Theme.Palette.aurora4, nx: -0.10, ny:  0.05, scale: 0.70,
+                     opacity: (scheme == .dark ? 0.28 : 0.30) * k, drifted: drift)
+            }
         }
         .ignoresSafeArea()
         .onAppear {

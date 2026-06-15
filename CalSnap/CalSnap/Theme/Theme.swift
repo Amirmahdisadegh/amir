@@ -11,16 +11,16 @@ enum Theme {
     // Brand identity built around a fresh lime→emerald energy gradient
     // with a warm coral accent reserved for calories.
     enum Palette {
-        // Brand — electric blue
-        static let brand = Color(hex: 0x2E9CFF)       // electric blue
-        static let brandDeep = Color(hex: 0x1D6FD6)
-        static let brandSoft = Color(hex: 0x7CC4FF)
+        // Brand — driven by the user-selected accent preset (Theme.accent)
+        static var brand: Color { Theme.accent.brand }
+        static var brandDeep: Color { Theme.accent.brandDeep }
+        static var brandSoft: Color { Theme.accent.brandSoft }
 
-        // Aurora accent colors (kept in the blue/indigo family for a graphite look)
-        static let aurora1 = Color(hex: 0x22D3EE)    // cyan
-        static let aurora2 = Color(hex: 0x3B82F6)    // blue
-        static let aurora3 = Color(hex: 0x6366F1)    // indigo
-        static let aurora4 = Color(hex: 0x0EA5E9)    // sky
+        // Aurora accent colors come from the selected preset
+        static var aurora1: Color { Theme.accent.aurora[0] }
+        static var aurora2: Color { Theme.accent.aurora[1] }
+        static var aurora3: Color { Theme.accent.aurora[2] }
+        static var aurora4: Color { Theme.accent.aurora[3] }
 
         // Calories / energy accent — warm orange contrasts the cool theme
         static let calorie = Color(hex: 0xFF8A5B)
@@ -78,10 +78,12 @@ enum Theme {
     }
 
     // MARK: Gradients
-    static let energyGradient = LinearGradient(
-        colors: [Palette.brandSoft, Palette.brand, Palette.brandDeep],
-        startPoint: .topLeading, endPoint: .bottomTrailing
-    )
+    static var energyGradient: LinearGradient {
+        LinearGradient(
+            colors: [Palette.brandSoft, Palette.brand, Palette.brandDeep],
+            startPoint: .topLeading, endPoint: .bottomTrailing
+        )
+    }
 
     static let calorieGradient = LinearGradient(
         colors: [Palette.calorieSoft, Palette.calorie],

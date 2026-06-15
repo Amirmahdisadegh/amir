@@ -113,6 +113,21 @@
 "theme.light" = "Light";
 "theme.dark" = "Dark";
 
+/* Appearance customization */
+"settings.customize" = "Customize appearance";
+"appearance.title" = "Appearance";
+"appearance.preview" = "Live preview";
+"appearance.mode" = "Theme";
+"appearance.accent" = "Accent color";
+"appearance.background" = "Background";
+"appearance.glass" = "Glass amount";
+"appearance.icon" = "App icon";
+"action.apply" = "Apply";
+"bg.aurora" = "Aurora";
+"bg.black" = "Black";
+"bg.graphite" = "Graphite";
+"bg.vivid" = "Vivid";
+
 /* Profile */
 "profile.basics" = "Basics";
 "profile.name" = "Name";

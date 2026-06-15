@@ -13,8 +13,44 @@ final class AppState {
     }
 
     var themeMode: AppThemeMode {
+        // Reactive via preferredColorScheme — no tree rebuild needed.
         didSet { UserDefaults.standard.set(themeMode.rawValue, forKey: Keys.theme) }
     }
+
+    /// Currently-selected tab. Kept here so it survives appearance rebuilds.
+    var selectedTab: AppTab = .home
+
+    // MARK: Appearance customization
+
+    /// Selected accent preset id.
+    var accentID: String {
+        didSet {
+            Theme.accent = AccentPreset.by(id: accentID)
+            UserDefaults.standard.set(accentID, forKey: Keys.accent)
+            appearanceVersion += 1
+        }
+    }
+
+    /// Background treatment id.
+    var backgroundID: String {
+        didSet {
+            Theme.backgroundStyle = BackgroundStyle(rawValue: backgroundID) ?? .aurora
+            UserDefaults.standard.set(backgroundID, forKey: Keys.background)
+            appearanceVersion += 1
+        }
+    }
+
+    /// Glass translucency 0…1.
+    var glass: Double {
+        didSet {
+            Theme.glassIntensity = glass
+            UserDefaults.standard.set(glass, forKey: Keys.glass)
+            appearanceVersion += 1
+        }
+    }
+
+    /// Bumped on any appearance change so the view tree rebuilds.
+    private(set) var appearanceVersion = 0
 
     var hasOnboarded: Bool {
         didSet { UserDefaults.standard.set(hasOnboarded, forKey: Keys.onboarded) }
@@ -86,6 +122,15 @@ final class AppState {
         }
         activeProvider = AIProvider(rawValue: defaults.string(forKey: Keys.provider) ?? "")
             ?? .claude
+
+        accentID = defaults.string(forKey: Keys.accent) ?? "blue"
+        backgroundID = defaults.string(forKey: Keys.background) ?? BackgroundStyle.aurora.rawValue
+        glass = defaults.object(forKey: Keys.glass) as? Double ?? 0.6
+
+        // Sync the static Theme appearance before the first render.
+        Theme.accent = AccentPreset.by(id: accentID)
+        Theme.backgroundStyle = BackgroundStyle(rawValue: backgroundID) ?? .aurora
+        Theme.glassIntensity = glass
     }
 
     // MARK: Burned calories per day
@@ -125,5 +170,8 @@ final class AppState {
         static let onboarded = "calsnap.onboarded"
         static let burned = "calsnap.burnedByDay"
         static let provider = "calsnap.activeProvider"
+        static let accent = "calsnap.accent"
+        static let background = "calsnap.background"
+        static let glass = "calsnap.glass"
     }
 }

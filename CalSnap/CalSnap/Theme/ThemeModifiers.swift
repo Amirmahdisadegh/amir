@@ -10,28 +10,26 @@ struct CardSurface: ViewModifier {
     var radius: CGFloat = Theme.Radius.lg
 
     func body(content: Content) -> some View {
-        content
+        // Lower intensity → more solid panel; higher → barely-there glass.
+        let solidOpacity = (1 - Theme.glassIntensity) * 0.9
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return content
             .padding(padding)
-            .background(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
+            .background(shape.fill(.ultraThinMaterial))
+            // Solid backing that fades out as the glass gets more translucent.
+            .background(shape.fill(Theme.surface(scheme).opacity(solidOpacity)))
             // Subtle inner tint + top sheen for a glassier read.
             .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: scheme == .dark
-                                ? [Color.white.opacity(0.10), Color.white.opacity(0.02)]
-                                : [Color.white.opacity(0.45), Color.white.opacity(0.10)],
-                            startPoint: .top, endPoint: .bottom
-                        )
+                shape.fill(
+                    LinearGradient(
+                        colors: scheme == .dark
+                            ? [Color.white.opacity(0.10), Color.white.opacity(0.02)]
+                            : [Color.white.opacity(0.45), Color.white.opacity(0.10)],
+                        startPoint: .top, endPoint: .bottom
                     )
+                )
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(Theme.glassBorder(scheme), lineWidth: 1)
-            )
+            .overlay(shape.strokeBorder(Theme.glassBorder(scheme), lineWidth: 1))
             .shadow(color: Color.black.opacity(scheme == .dark ? 0.45 : 0.12),
                     radius: 20, x: 0, y: 12)
     }

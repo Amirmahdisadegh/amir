@@ -48,3 +48,17 @@ targets:
         NSCameraUsageDescription: CalSnap uses the camera to take photos and videos of your meals so AI can recognize the food and estimate calories.
         NSPhotoLibraryUsageDescription: CalSnap lets you pick photos or videos of your meals from your library for AI analysis.
         ITSAppUsesNonExemptEncryption: false
+        CFBundleIcons:
+          CFBundleAlternateIcons:
+            Blue:
+              CFBundleIconFiles: [AppIcon-Blue]
+              UIPrerenderedIcon: false
+            Violet:
+              CFBundleIconFiles: [AppIcon-Violet]
+              UIPrerenderedIcon: false
+            Orange:
+              CFBundleIconFiles: [AppIcon-Orange]
+              UIPrerenderedIcon: false
+            Graphite:
+              CFBundleIconFiles: [AppIcon-Graphite]
+              UIPrerenderedIcon: false

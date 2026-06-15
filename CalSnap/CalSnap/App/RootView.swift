@@ -8,14 +8,15 @@ struct RootView: View {
         Group {
             if appState.hasOnboarded {
                 MainTabView()
-                    .transition(.opacity)
             } else {
                 OnboardingView()
-                    .transition(.opacity)
             }
         }
         // Applied here (inside a View) so it reacts to theme changes live.
         .preferredColorScheme(appState.themeMode.colorScheme)
+        // Rebuild the tree when accent / background / glass change so the
+        // statically-read Theme values refresh everywhere.
+        .id(appState.appearanceVersion)
     }
 }
 
@@ -26,16 +27,16 @@ enum AppTab: Int, CaseIterable {
 }
 
 struct MainTabView: View {
-    @Environment(\.colorScheme) private var scheme
-    @State private var selection: AppTab = .home
+    @Environment(AppState.self) private var appState
     @State private var showCapture = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        @Bindable var state = appState
+        return ZStack(alignment: .bottom) {
             AuroraBackground()
 
             Group {
-                switch selection {
+                switch appState.selectedTab {
                 case .home:     HomeView()
                 case .diary:    DiaryView()
                 case .capture:  HomeView() // placeholder; capture is modal
@@ -45,7 +46,7 @@ struct MainTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            CustomTabBar(selection: $selection) {
+            CustomTabBar(selection: $state.selectedTab) {
                 Haptics.tap()
                 showCapture = true
             }

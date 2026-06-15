@@ -1,6 +1,18 @@
 import SwiftUI
 import SwiftData
 
+/// Sheets presented from Home (single sheet modifier to avoid conflicts).
+enum HomeSheet: Identifiable {
+    case meal(FoodEntry)
+    case burned
+    var id: String {
+        switch self {
+        case .meal(let e): return "meal-\(e.id.uuidString)"
+        case .burned:      return "burned"
+        }
+    }
+}
+
 /// Aggregated nutrition for a set of entries.
 struct DailyTotals {
     var calories = 0, protein = 0, carbs = 0, fat = 0
@@ -19,8 +31,7 @@ struct HomeView: View {
     @Environment(\.colorScheme) private var scheme
     @Query(sort: \FoodEntry.date, order: .reverse) private var allEntries: [FoodEntry]
 
-    @State private var selectedEntry: FoodEntry?
-    @State private var showBurnedEditor = false
+    @State private var sheet: HomeSheet?
 
     private var todayEntries: [FoodEntry] {
         allEntries.filter { $0.date.isSameDay(as: .now) }
@@ -42,12 +53,13 @@ struct HomeView: View {
             .padding(.top, Theme.Space.sm)
         }
         .scrollIndicators(.hidden)
-        .sheet(item: $selectedEntry) { entry in
-            FoodDetailView(entry: entry)
-        }
-        .sheet(isPresented: $showBurnedEditor) {
-            BurnedEditorView()
-                .presentationDetents([.height(280)])
+        .sheet(item: $sheet) { which in
+            switch which {
+            case .meal(let entry):
+                FoodDetailView(entry: entry)
+            case .burned:
+                BurnedEditorView().presentationDetents([.height(280)])
+            }
         }
     }
 
@@ -97,7 +109,7 @@ struct HomeView: View {
                          value: totals.calories.grouped, tint: Theme.Palette.calorie)
                 Button {
                     Haptics.tap()
-                    showBurnedEditor = true
+                    sheet = .burned
                 } label: {
                     StatPill(icon: "flame.fill", label: "stat.burned",
                              value: burned.grouped, tint: Theme.Palette.warning)
@@ -136,7 +148,7 @@ struct HomeView: View {
                     .cardSurface()
             } else {
                 ForEach(todayEntries) { entry in
-                    Button { selectedEntry = entry } label: {
+                    Button { sheet = .meal(entry) } label: {
                         MealRow(entry: entry)
                     }
                     .buttonStyle(.plain)
