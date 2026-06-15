@@ -77,6 +77,22 @@
 "item.name" = "Food";
 "item.qty" = "Portion";
 
+/* Water & weight */
+"water.title" = "Water";
+"weight.title" = "Weight";
+"weight.log" = "Log";
+"weight.empty" = "No weight logged yet. Tap Log to start tracking.";
+"weight.logTitle" = "Log your weight";
+
+/* Food search */
+"search.title" = "Add Food";
+"search.placeholder" = "Search foods…";
+"search.recent" = "Recent";
+"search.common" = "Common foods";
+"search.added" = "Added";
+"capture.search" = "Search / Add Manually";
+"capture.search.sub" = "Pick from a food list";
+
 /* Insights */
 "insights.title" = "Insights";
 "insights.avg" = "7-day average";

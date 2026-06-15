@@ -20,7 +20,7 @@ struct CalSnapApp: App {
     /// stale store is deleted and recreated instead of crashing at launch.
     /// Falls back to an in-memory store as a last resort so the app always opens.
     private static func makeContainer() -> ModelContainer {
-        let schema = Schema([FoodEntry.self])
+        let schema = Schema([FoodEntry.self, WeightEntry.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         if let container = try? ModelContainer(for: schema, configurations: [config]) {

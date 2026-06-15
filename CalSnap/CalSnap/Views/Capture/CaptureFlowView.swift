@@ -9,9 +9,12 @@ struct CaptureFlowView: View {
     @Environment(\.modelContext) private var context
 
     @State private var vm = CaptureViewModel()
-    @State private var showCameraPhoto = false
-    @State private var showCameraVideo = false
-    @State private var showLibrary = false
+    @State private var captureSheet: CaptureSheet?
+
+    enum CaptureSheet: String, Identifiable {
+        case photo, video, library, search
+        var id: String { rawValue }
+    }
 
     var body: some View {
         ZStack {
@@ -24,14 +27,13 @@ struct CaptureFlowView: View {
             case .failed(let message): failure(message)
             }
         }
-        .sheet(isPresented: $showCameraPhoto) {
-            CameraPicker(mode: .photo) { handle($0) }.ignoresSafeArea()
-        }
-        .sheet(isPresented: $showCameraVideo) {
-            CameraPicker(mode: .video) { handle($0) }.ignoresSafeArea()
-        }
-        .sheet(isPresented: $showLibrary) {
-            LibraryPicker { handle($0) }.ignoresSafeArea()
+        .sheet(item: $captureSheet) { which in
+            switch which {
+            case .photo:   CameraPicker(mode: .photo) { handle($0) }.ignoresSafeArea()
+            case .video:   CameraPicker(mode: .video) { handle($0) }.ignoresSafeArea()
+            case .library: LibraryPicker { handle($0) }.ignoresSafeArea()
+            case .search:  FoodSearchView()
+            }
         }
     }
 
@@ -58,17 +60,23 @@ struct CaptureFlowView: View {
             VStack(spacing: 12) {
                 CaptureOption(icon: "camera.fill", title: "capture.photo",
                               subtitle: "capture.photo.sub", gradient: Theme.energyGradient) {
-                    showCameraPhoto = true
+                    captureSheet = .photo
                 }
                 CaptureOption(icon: "video.fill", title: "capture.video",
                               subtitle: "capture.video.sub", gradient: Theme.calorieGradient) {
-                    showCameraVideo = true
+                    captureSheet = .video
                 }
                 CaptureOption(icon: "photo.on.rectangle.angled", title: "capture.library",
                               subtitle: "capture.library.sub",
                               gradient: LinearGradient(colors: [Theme.Palette.protein, Theme.Palette.fat],
                                                        startPoint: .topLeading, endPoint: .bottomTrailing)) {
-                    showLibrary = true
+                    captureSheet = .library
+                }
+                CaptureOption(icon: "magnifyingglass", title: "capture.search",
+                              subtitle: "capture.search.sub",
+                              gradient: LinearGradient(colors: [Theme.Palette.aurora1, Theme.Palette.aurora3],
+                                                       startPoint: .topLeading, endPoint: .bottomTrailing)) {
+                    captureSheet = .search
                 }
             }
 

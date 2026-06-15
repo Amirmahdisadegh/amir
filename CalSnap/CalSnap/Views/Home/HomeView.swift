@@ -5,10 +5,12 @@ import SwiftData
 enum HomeSheet: Identifiable {
     case meal(FoodEntry)
     case burned
+    case weight
     var id: String {
         switch self {
         case .meal(let e): return "meal-\(e.id.uuidString)"
         case .burned:      return "burned"
+        case .weight:      return "weight"
         }
     }
 }
@@ -46,6 +48,8 @@ struct HomeView: View {
                 header
                 ringCard
                 macrosCard
+                WaterCard()
+                WeightCard(onLog: { sheet = .weight })
                 mealsSection
                 Color.clear.frame(height: 96) // tab bar spacing
             }
@@ -59,6 +63,8 @@ struct HomeView: View {
                 FoodDetailView(entry: entry)
             case .burned:
                 BurnedEditorView().presentationDetents([.height(280)])
+            case .weight:
+                WeightLogView().presentationDetents([.height(340)])
             }
         }
     }
@@ -76,14 +82,20 @@ struct HomeView: View {
                     .foregroundStyle(Theme.textPrimary(scheme))
             }
             Spacer()
-            Text(Date.now, format: .dateTime.weekday(.wide).day().month())
-                .font(Theme.Font.caption(13))
-                .foregroundStyle(Theme.textSecondary(scheme))
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(Theme.surface(scheme), in: Capsule())
+            if streak > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill").font(.system(size: 12))
+                    Text("\(streak)").font(Theme.Font.title(14)).monospacedDigit()
+                }
+                .foregroundStyle(Theme.Palette.calorie)
+                .padding(.horizontal, 10).padding(.vertical, 8)
+                .background(Theme.Palette.calorie.opacity(0.15), in: Capsule())
+            }
         }
         .padding(.top, 8)
     }
+
+    private var streak: Int { Stats.currentStreak(allEntries) }
 
     private var greeting: LocalizedStringKey {
         switch Calendar.current.component(.hour, from: .now) {

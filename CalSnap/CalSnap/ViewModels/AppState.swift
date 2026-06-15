@@ -84,6 +84,20 @@ final class AppState {
         didSet { persistBurned() }
     }
 
+    /// Water intake in millilitres, keyed by day.
+    var waterByDay: [String: Int] {
+        didSet {
+            if let data = try? JSONEncoder().encode(waterByDay) {
+                UserDefaults.standard.set(data, forKey: Keys.water)
+            }
+        }
+    }
+
+    /// Daily water goal in millilitres.
+    var waterGoalML: Int {
+        didSet { UserDefaults.standard.set(waterGoalML, forKey: Keys.waterGoal) }
+    }
+
     /// The AI service currently used for recognition.
     var activeProvider: AIProvider {
         didSet { UserDefaults.standard.set(activeProvider.rawValue, forKey: Keys.provider) }
@@ -143,6 +157,13 @@ final class AppState {
         } else {
             burnedByDay = [:]
         }
+        if let data = defaults.data(forKey: Keys.water),
+           let decoded = try? JSONDecoder().decode([String: Int].self, from: data) {
+            waterByDay = decoded
+        } else {
+            waterByDay = [:]
+        }
+        waterGoalML = defaults.object(forKey: Keys.waterGoal) as? Int ?? 2000
         activeProvider = AIProvider(rawValue: defaults.string(forKey: Keys.provider) ?? "")
             ?? .claude
 
@@ -172,6 +193,16 @@ final class AppState {
         burnedByDay[Self.dayKey(day)] = max(0, value)
     }
 
+    // MARK: Water
+
+    func water(on day: Date = .now) -> Int {
+        waterByDay[Self.dayKey(day)] ?? 0
+    }
+
+    func addWater(_ ml: Int, on day: Date = .now) {
+        waterByDay[Self.dayKey(day)] = max(0, water(on: day) + ml)
+    }
+
     private static func dayKey(_ date: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -198,6 +229,8 @@ final class AppState {
         static let theme = "calsnap.theme"
         static let onboarded = "calsnap.onboarded"
         static let burned = "calsnap.burnedByDay"
+        static let water = "calsnap.waterByDay"
+        static let waterGoal = "calsnap.waterGoal"
         static let provider = "calsnap.activeProvider"
         static let accent = "calsnap.accent"
         static let customAccent = "calsnap.customAccent"
