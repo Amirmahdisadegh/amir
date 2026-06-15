@@ -72,7 +72,7 @@ struct CaptureFlowView: View {
                 }
             }
 
-            if !appState.hasAPIKey {
+            if !appState.hasActiveKey {
                 Label("capture.noKey", systemImage: "exclamationmark.triangle.fill")
                     .font(Theme.Font.caption(12))
                     .foregroundStyle(Theme.Palette.warning)
@@ -114,7 +114,12 @@ struct CaptureFlowView: View {
 
     private func handle(_ media: PickedMedia) {
         vm.set(media: media)
-        Task { await vm.analyze(apiKey: appState.apiKey) }
+        let provider = appState.activeProvider
+        Task {
+            await vm.analyze(provider: provider,
+                             apiKey: appState.apiKey(for: provider),
+                             model: appState.model(for: provider))
+        }
     }
 
     private func save() {

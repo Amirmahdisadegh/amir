@@ -10,7 +10,6 @@ struct CalSnapApp: App {
         WindowGroup {
             RootView()
                 .environment(appState)
-                .preferredColorScheme(appState.themeMode.colorScheme)
                 .tint(Theme.Palette.brand)
         }
         .modelContainer(container)

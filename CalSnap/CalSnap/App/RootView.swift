@@ -5,13 +5,17 @@ struct RootView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        if appState.hasOnboarded {
-            MainTabView()
-                .transition(.opacity)
-        } else {
-            OnboardingView()
-                .transition(.opacity)
+        Group {
+            if appState.hasOnboarded {
+                MainTabView()
+                    .transition(.opacity)
+            } else {
+                OnboardingView()
+                    .transition(.opacity)
+            }
         }
+        // Applied here (inside a View) so it reacts to theme changes live.
+        .preferredColorScheme(appState.themeMode.colorScheme)
     }
 }
 

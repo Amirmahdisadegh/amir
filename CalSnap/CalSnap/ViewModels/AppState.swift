@@ -25,18 +25,46 @@ final class AppState {
         didSet { persistBurned() }
     }
 
-    /// Whether a Claude API key is configured.
-    var hasAPIKey: Bool { !(apiKey?.isEmpty ?? true) }
+    /// The AI service currently used for recognition.
+    var activeProvider: AIProvider {
+        didSet { UserDefaults.standard.set(activeProvider.rawValue, forKey: Keys.provider) }
+    }
 
-    var apiKey: String? {
-        get { KeychainService.shared.read(key: Keys.apiKey) }
-        set {
-            if let newValue, !newValue.isEmpty {
-                KeychainService.shared.save(key: Keys.apiKey, value: newValue)
-            } else {
-                KeychainService.shared.delete(key: Keys.apiKey)
-            }
+    /// Bumped whenever a key/model changes so SwiftUI views refresh.
+    private(set) var aiConfigVersion = 0
+
+    // MARK: Per-provider API keys (Keychain)
+
+    func apiKey(for provider: AIProvider) -> String? {
+        KeychainService.shared.read(key: provider.keychainKey)
+    }
+
+    func setAPIKey(_ value: String?, for provider: AIProvider) {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmed, !trimmed.isEmpty {
+            KeychainService.shared.save(key: provider.keychainKey, value: trimmed)
+        } else {
+            KeychainService.shared.delete(key: provider.keychainKey)
         }
+        aiConfigVersion += 1
+    }
+
+    func hasKey(for provider: AIProvider) -> Bool {
+        !(apiKey(for: provider)?.isEmpty ?? true)
+    }
+
+    var hasActiveKey: Bool { hasKey(for: activeProvider) }
+
+    // MARK: Per-provider model (UserDefaults)
+
+    func model(for provider: AIProvider) -> String {
+        let stored = UserDefaults.standard.string(forKey: provider.modelDefaultsKey)
+        return (stored?.isEmpty == false ? stored! : provider.defaultModel)
+    }
+
+    func setModel(_ value: String, for provider: AIProvider) {
+        UserDefaults.standard.set(value, forKey: provider.modelDefaultsKey)
+        aiConfigVersion += 1
     }
 
     init() {
@@ -56,6 +84,8 @@ final class AppState {
         } else {
             burnedByDay = [:]
         }
+        activeProvider = AIProvider(rawValue: defaults.string(forKey: Keys.provider) ?? "")
+            ?? .claude
     }
 
     // MARK: Burned calories per day
@@ -94,6 +124,6 @@ final class AppState {
         static let theme = "calsnap.theme"
         static let onboarded = "calsnap.onboarded"
         static let burned = "calsnap.burnedByDay"
-        static let apiKey = "calsnap.claude.apikey"
+        static let provider = "calsnap.activeProvider"
     }
 }

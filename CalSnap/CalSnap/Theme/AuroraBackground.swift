@@ -8,7 +8,7 @@ struct AuroraBackground: View {
     @State private var drift = false
 
     private var base: Color {
-        scheme == .dark ? Color(hex: 0x070C0A) : Color(hex: 0xEAF4EF)
+        scheme == .dark ? Color(hex: 0x080A0F) : Color(hex: 0xEAEFF6)
     }
 
     var body: some View {

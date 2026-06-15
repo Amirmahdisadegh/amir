@@ -32,25 +32,28 @@ struct StatPill: View {
     var tint: Color
 
     var body: some View {
-        HStack(spacing: 10) {
+        VStack(spacing: 7) {
             ZStack {
-                Circle().fill(tint.opacity(0.15)).frame(width: 38, height: 38)
+                Circle().fill(tint.opacity(0.15)).frame(width: 36, height: 36)
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(tint)
             }
-            VStack(alignment: .leading, spacing: 1) {
-                Text(value)
-                    .font(Theme.Font.title(17))
-                    .foregroundStyle(Theme.textPrimary(scheme))
-                    .monospacedDigit()
-                Text(label)
-                    .font(Theme.Font.caption(11))
-                    .foregroundStyle(Theme.textSecondary(scheme))
-            }
-            Spacer(minLength: 0)
+            Text(value)
+                .font(Theme.Font.title(16))
+                .foregroundStyle(Theme.textPrimary(scheme))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label)
+                .font(Theme.Font.caption(10))
+                .foregroundStyle(Theme.textSecondary(scheme))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
-        .padding(12)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 6)
         .background(Theme.chipFill(scheme),
                     in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
         .overlay(

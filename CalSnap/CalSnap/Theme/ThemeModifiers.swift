@@ -16,16 +16,24 @@ struct CardSurface: ViewModifier {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .fill(.ultraThinMaterial)
             )
+            // Subtle inner tint + top sheen for a glassier read.
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(scheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.18))
+                    .fill(
+                        LinearGradient(
+                            colors: scheme == .dark
+                                ? [Color.white.opacity(0.10), Color.white.opacity(0.02)]
+                                : [Color.white.opacity(0.45), Color.white.opacity(0.10)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .strokeBorder(Theme.glassBorder(scheme), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(scheme == .dark ? 0.35 : 0.10),
-                    radius: 18, x: 0, y: 10)
+            .shadow(color: Color.black.opacity(scheme == .dark ? 0.45 : 0.12),
+                    radius: 20, x: 0, y: 12)
     }
 }
 

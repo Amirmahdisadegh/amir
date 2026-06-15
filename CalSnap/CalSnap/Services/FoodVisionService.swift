@@ -38,15 +38,14 @@ enum VisionError: LocalizedError {
 /// estimate when no API key is present so the app stays usable offline.
 final class FoodVisionService {
 
-    /// Vision-capable Claude model. Sonnet 4.6 balances accuracy, speed and cost
-    /// for frequent meal photos; swap to claude-opus-4-8 for maximum accuracy.
-    static let model = "claude-sonnet-4-6"
-
-    private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
+    private let provider: AIProvider
     private let apiKey: String?
+    private let model: String
 
-    init(apiKey: String?) {
+    init(provider: AIProvider, apiKey: String?, model: String) {
+        self.provider = provider
         self.apiKey = apiKey
+        self.model = model.isEmpty ? provider.defaultModel : model
     }
 
     // MARK: Public entry points
@@ -72,32 +71,8 @@ final class FoodVisionService {
             return OfflineEstimator.estimate(hint: hint)
         }
 
-        var content: [[String: Any]] = imageDatas.map { data in
-            [
-                "type": "image",
-                "source": [
-                    "type": "base64",
-                    "media_type": "image/jpeg",
-                    "data": data.base64EncodedString()
-                ]
-            ]
-        }
-        content.append(["type": "text", "text": Self.userPrompt(hint: hint, fromVideo: fromVideo)])
-
-        let body: [String: Any] = [
-            "model": Self.model,
-            "max_tokens": 1024,
-            "system": Self.systemPrompt,
-            "messages": [["role": "user", "content": content]]
-        ]
-
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        request.timeoutInterval = 60
+        let userPrompt = Self.userPrompt(hint: hint, fromVideo: fromVideo)
+        let request = try buildRequest(imageDatas: imageDatas, userPrompt: userPrompt, apiKey: apiKey)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -108,8 +83,111 @@ final class FoodVisionService {
             throw VisionError.http(http.statusCode, message)
         }
 
-        let text = try Self.extractText(from: data)
+        let text = try extractText(from: data)
         return try Self.parse(text)
+    }
+
+    // MARK: Per-provider request building
+
+    private func buildRequest(imageDatas: [Data], userPrompt: String, apiKey: String) throws -> URLRequest {
+        switch provider {
+        case .claude:  return claudeRequest(imageDatas, userPrompt, apiKey)
+        case .openai:  return openAIRequest(imageDatas, userPrompt, apiKey)
+        case .gemini:  return try geminiRequest(imageDatas, userPrompt, apiKey)
+        }
+    }
+
+    private func claudeRequest(_ images: [Data], _ userPrompt: String, _ apiKey: String) -> URLRequest {
+        var content: [[String: Any]] = images.map { data in
+            ["type": "image",
+             "source": ["type": "base64", "media_type": "image/jpeg",
+                        "data": data.base64EncodedString()]]
+        }
+        content.append(["type": "text", "text": userPrompt])
+        let body: [String: Any] = [
+            "model": model,
+            "max_tokens": 1024,
+            "system": Self.systemPrompt,
+            "messages": [["role": "user", "content": content]]
+        ]
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        request.httpMethod = "POST"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 60
+        return request
+    }
+
+    private func openAIRequest(_ images: [Data], _ userPrompt: String, _ apiKey: String) -> URLRequest {
+        var content: [[String: Any]] = [["type": "text", "text": userPrompt]]
+        for data in images {
+            content.append([
+                "type": "image_url",
+                "image_url": ["url": "data:image/jpeg;base64,\(data.base64EncodedString())"]
+            ])
+        }
+        let body: [String: Any] = [
+            "model": model,
+            "max_tokens": 1024,
+            "messages": [
+                ["role": "system", "content": Self.systemPrompt],
+                ["role": "user", "content": content]
+            ]
+        ]
+        var request = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 60
+        return request
+    }
+
+    private func geminiRequest(_ images: [Data], _ userPrompt: String, _ apiKey: String) throws -> URLRequest {
+        var parts: [[String: Any]] = [["text": userPrompt]]
+        for data in images {
+            parts.append(["inline_data": ["mime_type": "image/jpeg", "data": data.base64EncodedString()]])
+        }
+        let body: [String: Any] = [
+            "system_instruction": ["parts": [["text": Self.systemPrompt]]],
+            "contents": [["parts": parts]],
+            "generationConfig": ["maxOutputTokens": 1024, "temperature": 0.4]
+        ]
+        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent?key=\(apiKey)"
+        guard let url = URL(string: urlString) else { throw VisionError.badResponse("bad url") }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 60
+        return request
+    }
+
+    // MARK: Per-provider response text extraction
+
+    private func extractText(from data: Data) throws -> String {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw VisionError.decoding
+        }
+        let text: String
+        switch provider {
+        case .claude:
+            let content = (json["content"] as? [[String: Any]]) ?? []
+            text = content.compactMap { $0["text"] as? String }.joined()
+        case .openai:
+            let choices = (json["choices"] as? [[String: Any]]) ?? []
+            let message = choices.first?["message"] as? [String: Any]
+            text = (message?["content"] as? String) ?? ""
+        case .gemini:
+            let candidates = (json["candidates"] as? [[String: Any]]) ?? []
+            let content = candidates.first?["content"] as? [String: Any]
+            let parts = (content?["parts"] as? [[String: Any]]) ?? []
+            text = parts.compactMap { $0["text"] as? String }.joined()
+        }
+        guard !text.isEmpty else { throw VisionError.decoding }
+        return text
     }
 
     // MARK: Prompts
@@ -154,16 +232,6 @@ final class FoodVisionService {
     }
 
     // MARK: Response parsing
-
-    private static func extractText(from data: Data) throws -> String {
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]] else {
-            throw VisionError.decoding
-        }
-        let text = content.compactMap { $0["text"] as? String }.joined()
-        guard !text.isEmpty else { throw VisionError.decoding }
-        return text
-    }
 
     private static func parse(_ text: String) throws -> FoodAnalysis {
         // Be forgiving: pull out the first {...} block in case of stray text.

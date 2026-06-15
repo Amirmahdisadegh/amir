@@ -39,10 +39,10 @@ final class CaptureViewModel {
     }
 
     @MainActor
-    func analyze(apiKey: String?) async {
+    func analyze(provider: AIProvider, apiKey: String?, model: String) async {
         guard let pickedMedia else { return }
         phase = .analyzing
-        let service = FoodVisionService(apiKey: apiKey)
+        let service = FoodVisionService(provider: provider, apiKey: apiKey, model: model)
         do {
             let result: FoodAnalysis
             switch pickedMedia {

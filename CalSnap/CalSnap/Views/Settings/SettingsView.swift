@@ -44,12 +44,11 @@ struct SettingsView: View {
                 }
                 .cardSurface(padding: 6)
 
-                // AI
+                // AI provider
                 VStack(spacing: 0) {
                     settingsRow(icon: "sparkles", tint: Theme.Palette.fat,
-                                title: "settings.apiKey",
-                                subtitle: appState.hasAPIKey ? "settings.apiKey.set"
-                                                             : "settings.apiKey.unset") {
+                                title: "settings.ai",
+                                subtitle: aiSubtitle) {
                         showAPIKey = true
                     }
                 }
@@ -62,7 +61,7 @@ struct SettingsView: View {
         }
         .scrollIndicators(.hidden)
         .sheet(isPresented: $showProfile) { ProfileEditorView() }
-        .sheet(isPresented: $showAPIKey) { APIKeyView() }
+        .sheet(isPresented: $showAPIKey) { AISettingsView() }
         .sheet(isPresented: $showBurned) {
             BurnedEditorView().presentationDetents([.height(280)])
         }
@@ -109,6 +108,13 @@ struct SettingsView: View {
     private var profileSubtitle: LocalizedStringKey {
         let p = appState.profile
         return LocalizedStringKey("\(Int(p.weightKg)) kg · \(Int(p.heightCm)) cm · \(p.age)")
+    }
+
+    private var aiSubtitle: LocalizedStringKey {
+        let name = appState.activeProvider.displayName
+        let status = appState.hasActiveKey ? "ready" : "no API key"
+        _ = appState.aiConfigVersion   // re-read when keys change
+        return LocalizedStringKey("\(name) · \(status)")
     }
 
     // MARK: Theme picker

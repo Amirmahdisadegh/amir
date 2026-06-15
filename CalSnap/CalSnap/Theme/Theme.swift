@@ -11,29 +11,29 @@ enum Theme {
     // Brand identity built around a fresh lime→emerald energy gradient
     // with a warm coral accent reserved for calories.
     enum Palette {
-        // Brand
-        static let brand = Color(hex: 0x10D9A3)      // vivid emerald-mint
-        static let brandDeep = Color(hex: 0x059669)
-        static let brandSoft = Color(hex: 0x6EE7B7)
+        // Brand — electric blue
+        static let brand = Color(hex: 0x2E9CFF)       // electric blue
+        static let brandDeep = Color(hex: 0x1D6FD6)
+        static let brandSoft = Color(hex: 0x7CC4FF)
 
-        // Aurora accent colors used behind the glass
-        static let aurora1 = Color(hex: 0x2DD4BF)    // teal
-        static let aurora2 = Color(hex: 0x38BDF8)    // sky
-        static let aurora3 = Color(hex: 0xA3E635)    // lime
-        static let aurora4 = Color(hex: 0xC084FC)    // violet
+        // Aurora accent colors (kept in the blue/indigo family for a graphite look)
+        static let aurora1 = Color(hex: 0x22D3EE)    // cyan
+        static let aurora2 = Color(hex: 0x3B82F6)    // blue
+        static let aurora3 = Color(hex: 0x6366F1)    // indigo
+        static let aurora4 = Color(hex: 0x0EA5E9)    // sky
 
-        // Calories / energy accent
-        static let calorie = Color(hex: 0xFF6B6B)
-        static let calorieSoft = Color(hex: 0xFFA07A)
+        // Calories / energy accent — warm orange contrasts the cool theme
+        static let calorie = Color(hex: 0xFF8A5B)
+        static let calorieSoft = Color(hex: 0xFFB088)
 
         // Macro accents
-        static let protein = Color(hex: 0x60A5FA)   // blue
+        static let protein = Color(hex: 0x38BDF8)   // sky blue
         static let carbs   = Color(hex: 0xFBBF24)   // amber
-        static let fat     = Color(hex: 0xC084FC)   // violet
+        static let fat     = Color(hex: 0xA78BFA)   // violet
 
         // Semantic
-        static let success = Color(hex: 0x22C55E)
-        static let warning = Color(hex: 0xF59E0B)
+        static let success = Color(hex: 0x34D399)
+        static let warning = Color(hex: 0xFBBF24)
         static let danger  = Color(hex: 0xF87171)
     }
 
@@ -41,8 +41,8 @@ enum Theme {
     static func glassBorder(_ scheme: ColorScheme) -> LinearGradient {
         LinearGradient(
             colors: scheme == .dark
-                ? [Color.white.opacity(0.25), Color.white.opacity(0.05)]
-                : [Color.white.opacity(0.9), Color.white.opacity(0.3)],
+                ? [Color.white.opacity(0.35), Color.white.opacity(0.06)]
+                : [Color.white.opacity(0.95), Color.white.opacity(0.35)],
             startPoint: .topLeading, endPoint: .bottomTrailing
         )
     }
@@ -52,17 +52,17 @@ enum Theme {
         scheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.55)
     }
 
-    // MARK: Adaptive surfaces
+    // MARK: Adaptive surfaces — graphite
     static func background(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(hex: 0x0B1014) : Color(hex: 0xF6F8F7)
+        scheme == .dark ? Color(hex: 0x0A0C10) : Color(hex: 0xEEF1F5)
     }
 
     static func surface(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(hex: 0x161D22) : Color.white
+        scheme == .dark ? Color(hex: 0x14181F) : Color.white
     }
 
     static func surfaceElevated(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(hex: 0x1E262C) : Color.white
+        scheme == .dark ? Color(hex: 0x1C212A) : Color.white
     }
 
     static func separator(_ scheme: ColorScheme) -> Color {
@@ -70,11 +70,11 @@ enum Theme {
     }
 
     static func textPrimary(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(hex: 0xF2F5F4) : Color(hex: 0x10211B)
+        scheme == .dark ? Color(hex: 0xF3F5F8) : Color(hex: 0x121620)
     }
 
     static func textSecondary(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(hex: 0x9AA7A2) : Color(hex: 0x6B7A74)
+        scheme == .dark ? Color(hex: 0x97A0AE) : Color(hex: 0x69717E)
     }
 
     // MARK: Gradients
@@ -90,9 +90,9 @@ enum Theme {
 
     static func heroGradient(_ scheme: ColorScheme) -> LinearGradient {
         scheme == .dark
-        ? LinearGradient(colors: [Color(hex: 0x0E1A16), Color(hex: 0x0B1014)],
+        ? LinearGradient(colors: [Color(hex: 0x101622), Color(hex: 0x0A0C10)],
                          startPoint: .top, endPoint: .bottom)
-        : LinearGradient(colors: [Color(hex: 0xE8FBF1), Color(hex: 0xF6F8F7)],
+        : LinearGradient(colors: [Color(hex: 0xE6EEFB), Color(hex: 0xEEF1F5)],
                          startPoint: .top, endPoint: .bottom)
     }
 

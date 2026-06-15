@@ -40,7 +40,7 @@ enum OfflineEstimator {
         return FoodAnalysis(
             title: name,
             items: [item],
-            summary: "Offline estimate — add your Claude API key for accurate AI recognition.",
+            summary: "Offline estimate — add an AI API key for accurate recognition.",
             isEstimateOnly: true
         )
     }

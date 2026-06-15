@@ -60,7 +60,7 @@
 "capture.library" = "Choose from Library";
 "capture.library.sub" = "Pick a photo or clip";
 "capture.hint" = "Add a note (optional)";
-"capture.noKey" = "No Claude API key yet — results will be rough estimates. Add a key in Settings.";
+"capture.noKey" = "No AI API key yet — results will be rough estimates. Add one in Settings → AI Engine.";
 "capture.failed" = "Analysis failed";
 
 /* Analyzing */
@@ -94,11 +94,19 @@
 "settings.burned.sub" = "Set today's activity burn";
 "burned.title" = "Calories burned today";
 "burned.subtitle" = "From workouts & activity — added to your budget";
-"settings.apiKey" = "Claude API Key";
-"settings.apiKey.set" = "Configured · tap to change";
-"settings.apiKey.unset" = "Not set · using offline estimates";
+"settings.ai" = "AI Engine";
 "settings.dailyGoal" = "Daily Goal";
 "settings.about" = "AI-powered calorie counting from a photo or video.";
+
+/* AI providers */
+"ai.title" = "AI Engine";
+"ai.choose" = "Choose which AI recognizes your meals";
+"ai.keyLabel" = "API key";
+"ai.getKey %@" = "Get a key at %@";
+"ai.privacy" = "Stored securely in your device Keychain";
+"ai.removeKey" = "Remove key";
+"ai.model" = "Model";
+"ai.modelCustom" = "Or type a model name";
 
 /* Theme */
 "theme.system" = "System";
