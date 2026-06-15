@@ -127,6 +127,9 @@
 "bg.black" = "Black";
 "bg.graphite" = "Graphite";
 "bg.vivid" = "Vivid";
+"bg.photo" = "Photo";
+"appearance.choosePhoto" = "Choose a photo";
+"appearance.changePhoto" = "Change photo";
 
 /* Profile */
 "profile.basics" = "Basics";

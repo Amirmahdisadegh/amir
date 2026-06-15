@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import Observation
 
 /// App-wide observable state: user profile, theme preference, onboarding flag and
@@ -22,13 +23,35 @@ final class AppState {
 
     // MARK: Appearance customization
 
-    /// Selected accent preset id.
+    /// Selected accent preset id ("custom" uses customAccentHex).
     var accentID: String {
         didSet {
-            Theme.accent = AccentPreset.by(id: accentID)
+            applyAccent()
             UserDefaults.standard.set(accentID, forKey: Keys.accent)
             appearanceVersion += 1
         }
+    }
+
+    /// Custom accent colour (0xRRGGBB) used when accentID == "custom".
+    var customAccentHex: UInt {
+        didSet {
+            applyAccent()
+            UserDefaults.standard.set(Int(customAccentHex), forKey: Keys.customAccent)
+            appearanceVersion += 1
+        }
+    }
+
+    private func applyAccent() {
+        Theme.accent = accentID == "custom"
+            ? AccentPreset.custom(Color(hex: customAccentHex))
+            : AccentPreset.by(id: accentID)
+    }
+
+    /// Saves (or clears) the custom background photo and refreshes the UI.
+    func setBackgroundPhoto(_ image: UIImage?) {
+        AppearanceStore.saveBackgroundPhoto(image)
+        Theme.backgroundImage = image
+        appearanceVersion += 1
     }
 
     /// Background treatment id.
@@ -123,14 +146,20 @@ final class AppState {
         activeProvider = AIProvider(rawValue: defaults.string(forKey: Keys.provider) ?? "")
             ?? .claude
 
+        customAccentHex = UInt(defaults.object(forKey: Keys.customAccent) as? Int ?? 0x2E9CFF)
         accentID = defaults.string(forKey: Keys.accent) ?? "blue"
         backgroundID = defaults.string(forKey: Keys.background) ?? BackgroundStyle.aurora.rawValue
         glass = defaults.object(forKey: Keys.glass) as? Double ?? 0.6
 
         // Sync the static Theme appearance before the first render.
-        Theme.accent = AccentPreset.by(id: accentID)
+        Theme.accent = accentID == "custom"
+            ? AccentPreset.custom(Color(hex: customAccentHex))
+            : AccentPreset.by(id: accentID)
         Theme.backgroundStyle = BackgroundStyle(rawValue: backgroundID) ?? .aurora
         Theme.glassIntensity = glass
+        if Theme.backgroundStyle == .photo {
+            Theme.backgroundImage = AppearanceStore.loadBackgroundPhoto()
+        }
     }
 
     // MARK: Burned calories per day
@@ -171,6 +200,7 @@ final class AppState {
         static let burned = "calsnap.burnedByDay"
         static let provider = "calsnap.activeProvider"
         static let accent = "calsnap.accent"
+        static let customAccent = "calsnap.customAccent"
         static let background = "calsnap.background"
         static let glass = "calsnap.glass"
     }

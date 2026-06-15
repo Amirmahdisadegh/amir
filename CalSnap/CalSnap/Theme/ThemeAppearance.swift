@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - User-customizable appearance
 
@@ -41,6 +42,41 @@ struct AccentPreset: Identifiable, Equatable {
     static func by(id: String) -> AccentPreset {
         presets.first { $0.id == id } ?? presets[0]
     }
+
+    /// Builds a full preset from a single custom colour.
+    static func custom(_ base: Color) -> AccentPreset {
+        AccentPreset(
+            id: "custom", name: "Custom",
+            brand: base,
+            brandSoft: base.adjusted(brightness: 0.16, saturation: -0.08),
+            brandDeep: base.adjusted(brightness: -0.22),
+            aurora: [base,
+                     base.adjusted(brightness: 0.12),
+                     base.adjusted(hue: 0.07),
+                     base.adjusted(hue: -0.07)]
+        )
+    }
+}
+
+extension Color {
+    /// Returns a copy with HSB components nudged (clamped to valid ranges).
+    func adjusted(brightness db: CGFloat = 0, saturation ds: CGFloat = 0, hue dh: CGFloat = 0) -> Color {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        func clamp(_ v: CGFloat) -> CGFloat { min(max(v, 0), 1) }
+        return Color(hue: Double(clamp(h + dh)),
+                     saturation: Double(clamp(s + ds)),
+                     brightness: Double(clamp(b + db)),
+                     opacity: Double(a))
+    }
+
+    /// 0xRRGGBB representation.
+    var hexValue: UInt {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        return (UInt(clamp255(r)) << 16) | (UInt(clamp255(g)) << 8) | UInt(clamp255(b))
+    }
+    private func clamp255(_ v: CGFloat) -> Int { min(max(Int(v * 255), 0), 255) }
 }
 
 /// Background treatment behind the glass.
@@ -49,6 +85,7 @@ enum BackgroundStyle: String, CaseIterable, Identifiable {
     case black      // pure black (OLED)
     case graphite   // flat graphite, minimal
     case vivid      // bolder, more saturated blobs
+    case photo      // a user-chosen photo
 
     var id: String { rawValue }
     var name: String {
@@ -57,6 +94,7 @@ enum BackgroundStyle: String, CaseIterable, Identifiable {
         case .black:    return "Pure Black"
         case .graphite: return "Graphite"
         case .vivid:    return "Vivid"
+        case .photo:    return "Photo"
         }
     }
 }
@@ -70,4 +108,28 @@ extension Theme {
     static var glassIntensity: Double = 0.6
     /// Background treatment.
     static var backgroundStyle: BackgroundStyle = .aurora
+    /// User-chosen background photo (when backgroundStyle == .photo).
+    static var backgroundImage: UIImage?
+}
+
+/// Persists the optional custom accent colour and background photo.
+enum AppearanceStore {
+    private static var photoURL: URL {
+        URL.applicationSupportDirectory.appending(path: "calsnap-bg.jpg")
+    }
+
+    static func saveBackgroundPhoto(_ image: UIImage?) {
+        guard let image, let data = image.jpegData(compressionQuality: 0.85) else {
+            try? FileManager.default.removeItem(at: photoURL)
+            return
+        }
+        try? FileManager.default.createDirectory(at: URL.applicationSupportDirectory,
+                                                 withIntermediateDirectories: true)
+        try? data.write(to: photoURL)
+    }
+
+    static func loadBackgroundPhoto() -> UIImage? {
+        guard let data = try? Data(contentsOf: photoURL) else { return nil }
+        return UIImage(data: data)
+    }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Full appearance customization: theme mode, accent colour, background style,
 /// glass amount and app icon. Edits a local draft with a live preview and
@@ -10,11 +11,17 @@ struct AppearanceSettingsView: View {
 
     @State private var mode: AppThemeMode = .system
     @State private var accentID = "blue"
+    @State private var customColor: Color = Color(hex: 0x2E9CFF)
     @State private var bgID = BackgroundStyle.aurora.rawValue
     @State private var glass = 0.6
     @State private var iconID = "default"
+    @State private var photo: UIImage?
+    @State private var showPhotoPicker = false
+    @State private var suppressColorChange = false
 
-    private var accent: AccentPreset { AccentPreset.by(id: accentID) }
+    private var accent: AccentPreset {
+        accentID == "custom" ? AccentPreset.custom(customColor) : AccentPreset.by(id: accentID)
+    }
     private var bg: BackgroundStyle { BackgroundStyle(rawValue: bgID) ?? .aurora }
     private var accentGradient: LinearGradient {
         LinearGradient(colors: [accent.brandSoft, accent.brand, accent.brandDeep],
@@ -47,6 +54,15 @@ struct AppearanceSettingsView: View {
                 }
             }
             .onAppear { load() }
+            .sheet(isPresented: $showPhotoPicker) {
+                LibraryPicker { media in
+                    if case let .image(img) = media {
+                        photo = img
+                        bgID = BackgroundStyle.photo.rawValue
+                    }
+                }
+                .ignoresSafeArea()
+            }
         }
     }
 
@@ -83,11 +99,16 @@ struct AppearanceSettingsView: View {
     private var previewBackground: some View {
         ZStack {
             (bg == .black ? Color.black : Color(hex: 0x0B0E14))
+            if bg == .photo, let img = photo {
+                Image(uiImage: img).resizable().scaledToFill()
+                    .overlay(Color.black.opacity(0.35))
+            }
             if bg == .graphite {
                 LinearGradient(colors: [Color(hex: 0x141A26), Color(hex: 0x0B0E14)],
                                startPoint: .top, endPoint: .bottom)
             }
-            let k: Double = bg == .vivid ? 1.4 : (bg == .black ? 0.5 : (bg == .graphite ? 0 : 1))
+            let k: Double = bg == .vivid ? 1.4
+                : (bg == .black ? 0.5 : ((bg == .graphite || bg == .photo) ? 0 : 1))
             if k > 0 {
                 Circle().fill(accent.brand).frame(width: 200).blur(radius: 55)
                     .opacity(0.6 * k).offset(x: -70, y: -50)
@@ -142,18 +163,49 @@ struct AppearanceSettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                // Custom colour picker
+                ZStack {
+                    Circle()
+                        .fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red],
+                                              center: .center))
+                        .frame(width: 46, height: 46)
+                        .overlay(Circle().strokeBorder(.white,
+                            lineWidth: accentID == "custom" ? 3 : 0))
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
+                    ColorPicker("", selection: $customColor, supportsOpacity: false)
+                        .labelsHidden()
+                        .opacity(0.02)            // invisible hit target over the wheel swatch
+                        .frame(width: 46, height: 46)
+                }
+                .onChange(of: customColor) { _, _ in
+                    if suppressColorChange { return }
+                    accentID = "custom"
+                }
             }
         }
     }
 
     private var backgroundSection: some View {
         section("appearance.background") {
-            HStack(spacing: 8) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 8)], spacing: 8) {
                 ForEach(BackgroundStyle.allCases) { style in
                     chip(text: LocalizedStringKey(bgName(style)), selected: bgID == style.rawValue) {
                         bgID = style.rawValue
+                        if style == .photo && photo == nil { showPhotoPicker = true }
                     }
                 }
+            }
+            if bgID == BackgroundStyle.photo.rawValue {
+                Button {
+                    Haptics.tap(); showPhotoPicker = true
+                } label: {
+                    Label(photo == nil ? "appearance.choosePhoto" : "appearance.changePhoto",
+                          systemImage: "photo.on.rectangle")
+                        .font(Theme.Font.caption(13))
+                        .foregroundStyle(Theme.Palette.brand)
+                }
+                .padding(.top, 4)
             }
         }
     }
@@ -233,24 +285,33 @@ struct AppearanceSettingsView: View {
         case .black:    return "bg.black"
         case .graphite: return "bg.graphite"
         case .vivid:    return "bg.vivid"
+        case .photo:    return "bg.photo"
         }
     }
 
     // MARK: Load / commit
 
     private func load() {
+        suppressColorChange = true
         mode = appState.themeMode
         accentID = appState.accentID
+        customColor = Color(hex: appState.customAccentHex)
         bgID = appState.backgroundID
         glass = appState.glass
         iconID = AppIconManager.currentID
+        photo = AppearanceStore.loadBackgroundPhoto()
+        DispatchQueue.main.async { suppressColorChange = false }
     }
 
     private func commit() {
         appState.themeMode = mode
+        if accentID == "custom" { appState.customAccentHex = customColor.hexValue }
         appState.accentID = accentID
-        appState.backgroundID = bgID
         appState.glass = glass
+        if bgID == BackgroundStyle.photo.rawValue {
+            appState.setBackgroundPhoto(photo)
+        }
+        appState.backgroundID = bgID
         AppIconManager.set(iconID == "default" ? nil : iconID)
         Haptics.success()
         dismiss()

@@ -21,12 +21,23 @@ struct AuroraBackground: View {
         case .vivid:    return 1.6
         case .black:    return 0.55   // faint glow over pure black
         case .graphite: return 0.0    // flat, no blobs
+        case .photo:    return 0.0    // photo provides the backdrop
         }
     }
 
     var body: some View {
         ZStack {
             base
+            if Theme.backgroundStyle == .photo, let img = Theme.backgroundImage {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+                    .overlay(
+                        // Dark scrim keeps foreground glass/text readable.
+                        LinearGradient(colors: [Color.black.opacity(0.25), Color.black.opacity(0.55)],
+                                       startPoint: .top, endPoint: .bottom)
+                    )
+            }
             if Theme.backgroundStyle == .graphite {
                 Theme.heroGradient(scheme)
             }
