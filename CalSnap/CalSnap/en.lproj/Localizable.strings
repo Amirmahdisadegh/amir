@@ -130,6 +130,7 @@
 "bg.photo" = "Photo";
 "appearance.choosePhoto" = "Choose a photo";
 "appearance.changePhoto" = "Change photo";
+"appearance.customColor" = "Custom color";
 
 /* Profile */
 "profile.basics" = "Basics";

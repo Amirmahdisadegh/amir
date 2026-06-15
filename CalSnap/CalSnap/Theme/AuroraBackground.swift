@@ -29,14 +29,16 @@ struct AuroraBackground: View {
         ZStack {
             base
             if Theme.backgroundStyle == .photo, let img = Theme.backgroundImage {
-                Image(uiImage: img)
-                    .resizable()
-                    .scaledToFill()
-                    .overlay(
-                        // Dark scrim keeps foreground glass/text readable.
-                        LinearGradient(colors: [Color.black.opacity(0.25), Color.black.opacity(0.55)],
-                                       startPoint: .top, endPoint: .bottom)
-                    )
+                GeometryReader { geo in
+                    Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                }
+                // Dark scrim keeps foreground glass/text readable over busy photos.
+                LinearGradient(colors: [Color.black.opacity(0.45), Color.black.opacity(0.65)],
+                               startPoint: .top, endPoint: .bottom)
             }
             if Theme.backgroundStyle == .graphite {
                 Theme.heroGradient(scheme)

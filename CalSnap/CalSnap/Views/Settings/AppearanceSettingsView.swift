@@ -163,25 +163,31 @@ struct AppearanceSettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
 
-                // Custom colour picker
-                ZStack {
-                    Circle()
-                        .fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red],
-                                              center: .center))
-                        .frame(width: 46, height: 46)
-                        .overlay(Circle().strokeBorder(.white,
-                            lineWidth: accentID == "custom" ? 3 : 0))
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
-                    ColorPicker("", selection: $customColor, supportsOpacity: false)
-                        .labelsHidden()
-                        .opacity(0.02)            // invisible hit target over the wheel swatch
-                        .frame(width: 46, height: 46)
+            // Custom colour — a real, clearly tappable ColorPicker.
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red],
+                                          center: .center))
+                    .frame(width: 26, height: 26)
+                    .overlay(Circle().strokeBorder(.white.opacity(0.3), lineWidth: 1))
+                Text("appearance.customColor")
+                    .font(Theme.Font.body(15))
+                    .foregroundStyle(Theme.textPrimary(scheme))
+                if accentID == "custom" {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(accent.brand)
                 }
-                .onChange(of: customColor) { _, _ in
-                    if suppressColorChange { return }
-                    accentID = "custom"
-                }
+                Spacer()
+                ColorPicker("", selection: $customColor, supportsOpacity: false)
+                    .labelsHidden()
+            }
+            .padding(.top, 6)
+            .onChange(of: customColor) { _, _ in
+                if suppressColorChange { return }
+                accentID = "custom"
             }
         }
     }
@@ -304,16 +310,23 @@ struct AppearanceSettingsView: View {
     }
 
     private func commit() {
-        appState.themeMode = mode
-        if accentID == "custom" { appState.customAccentHex = customColor.hexValue }
-        appState.accentID = accentID
-        appState.glass = glass
-        if bgID == BackgroundStyle.photo.rawValue {
-            appState.setBackgroundPhoto(photo)
-        }
-        appState.backgroundID = bgID
-        AppIconManager.set(iconID == "default" ? nil : iconID)
+        // Capture drafts, dismiss first, THEN apply. Applying bumps
+        // appearanceVersion which rebuilds the tree via .id — doing that while
+        // this sheet is still open breaks SwiftUI's sheet presentation.
+        let m = mode, a = accentID, customHex = customColor.hexValue
+        let b = bgID, g = glass, ic = iconID, pic = photo
         Haptics.success()
         dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            appState.themeMode = m
+            if a == "custom" { appState.customAccentHex = customHex }
+            appState.accentID = a
+            appState.glass = g
+            if b == BackgroundStyle.photo.rawValue {
+                appState.setBackgroundPhoto(pic)
+            }
+            appState.backgroundID = b
+            AppIconManager.set(ic == "default" ? nil : ic)
+        }
     }
 }

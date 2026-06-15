@@ -11,7 +11,9 @@ struct CardSurface: ViewModifier {
 
     func body(content: Content) -> some View {
         // Lower intensity → more solid panel; higher → barely-there glass.
-        let solidOpacity = (1 - Theme.glassIntensity) * 0.9
+        var solidOpacity = (1 - Theme.glassIntensity) * 0.9
+        // Keep panels readable over a busy photo background.
+        if Theme.backgroundStyle == .photo { solidOpacity = max(solidOpacity, 0.5) }
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         return content
             .padding(padding)

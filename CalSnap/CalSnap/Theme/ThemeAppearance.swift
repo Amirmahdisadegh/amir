@@ -119,10 +119,13 @@ enum AppearanceStore {
     }
 
     static func saveBackgroundPhoto(_ image: UIImage?) {
-        guard let image, let data = image.jpegData(compressionQuality: 0.85) else {
+        guard let image else {
             try? FileManager.default.removeItem(at: photoURL)
             return
         }
+        // Downscale so a full-res library image doesn't bog the UI down.
+        let scaled = image.resized(maxDimension: 1400)
+        guard let data = scaled.jpegData(compressionQuality: 0.85) else { return }
         try? FileManager.default.createDirectory(at: URL.applicationSupportDirectory,
                                                  withIntermediateDirectories: true)
         try? data.write(to: photoURL)
