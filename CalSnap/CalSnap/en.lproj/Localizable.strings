@@ -92,6 +92,8 @@
 "search.added" = "Added";
 "capture.search" = "Search / Add Manually";
 "capture.search.sub" = "Pick from a food list";
+"capture.barcode" = "Scan Barcode";
+"capture.barcode.sub" = "Packaged foods (Open Food Facts)";
 
 /* Reminders */
 "settings.reminders" = "Meal Reminders";
@@ -181,6 +183,10 @@
 "goal.maintain" = "Maintain";
 "goal.gain" = "Gain";
 "profile.age %lld" = "Age %lld";
+"profile.useTarget" = "Set a goal weight";
+"profile.targetWeight" = "Goal weight";
+"profile.eta %@ %lld" = "Reach %@ kg in about %lld weeks at this pace.";
+"profile.etaNone" = "Pick a goal weight in the direction of your goal.";
 "profile.calorieTarget %lld" = "Target %lld kcal";
 "profile.computedGoal %lld" = "Recommended target: %lld kcal/day";
 

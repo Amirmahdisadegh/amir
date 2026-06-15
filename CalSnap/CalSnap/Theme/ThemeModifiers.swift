@@ -10,18 +10,17 @@ struct CardSurface: ViewModifier {
     var radius: CGFloat = Theme.Radius.lg
 
     func body(content: Content) -> some View {
-        // Lower intensity → more solid panel; higher → barely-there glass.
-        var solidOpacity = (1 - Theme.glassIntensity) * 0.9
-        // Keep panels readable over a busy photo background.
-        if Theme.backgroundStyle == .photo { solidOpacity = max(solidOpacity, 0.5) }
+        // Translucent frosted panel over the colourful aurora — reads as glass
+        // but uses NO live blur, so scrolling stays perfectly smooth.
+        let g = Theme.glassIntensity                 // 0 = solid, 1 = very see-through
+        var panelOpacity = scheme == .dark ? (0.40 + (1 - g) * 0.5)
+                                           : (0.55 + (1 - g) * 0.4)
+        if Theme.backgroundStyle == .photo { panelOpacity = max(panelOpacity, 0.72) }
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         return content
             .padding(padding)
-            .background(shape.fill(.ultraThinMaterial))
-            // Solid backing that fades out as the glass gets more translucent.
-            .background(shape.fill(Theme.surface(scheme).opacity(solidOpacity)))
-            // Decorative sheen + border — must NOT intercept touches, otherwise
-            // buttons inside the card become untappable.
+            .background(shape.fill(Theme.surface(scheme).opacity(panelOpacity)))
+            // Decorative sheen + border — must NOT intercept touches.
             .overlay(
                 shape
                     .fill(
@@ -38,9 +37,8 @@ struct CardSurface: ViewModifier {
                 shape.strokeBorder(Theme.glassBorder(scheme), lineWidth: 1)
                     .allowsHitTesting(false)
             )
-            // Lighter shadow keeps scrolling smooth (offscreen shadow passes are costly).
-            .shadow(color: Color.black.opacity(scheme == .dark ? 0.22 : 0.08),
-                    radius: 8, x: 0, y: 4)
+            .shadow(color: Color.black.opacity(scheme == .dark ? 0.20 : 0.07),
+                    radius: 7, x: 0, y: 3)
     }
 }
 

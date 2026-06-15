@@ -92,8 +92,8 @@ struct CustomTabBar: View {
         .padding(.bottom, 8)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(scheme == .dark ? 0.4 : 0.12), radius: 18, y: 8)
+                .fill(Theme.surface(scheme).opacity(scheme == .dark ? 0.85 : 0.92))
+                .shadow(color: .black.opacity(scheme == .dark ? 0.35 : 0.10), radius: 14, y: 6)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)

@@ -12,7 +12,7 @@ struct CaptureFlowView: View {
     @State private var captureSheet: CaptureSheet?
 
     enum CaptureSheet: String, Identifiable {
-        case photo, video, library, search
+        case photo, video, library, search, barcode
         var id: String { rawValue }
     }
 
@@ -33,6 +33,9 @@ struct CaptureFlowView: View {
             case .video:   CameraPicker(mode: .video) { handle($0) }.ignoresSafeArea()
             case .library: LibraryPicker { handle($0) }.ignoresSafeArea()
             case .search:  FoodSearchView()
+            case .barcode: BarcodeScannerView { code in
+                Task { await vm.analyzeBarcode(code) }
+            }.ignoresSafeArea()
             }
         }
     }
@@ -71,6 +74,12 @@ struct CaptureFlowView: View {
                               gradient: LinearGradient(colors: [Theme.Palette.protein, Theme.Palette.fat],
                                                        startPoint: .topLeading, endPoint: .bottomTrailing)) {
                     captureSheet = .library
+                }
+                CaptureOption(icon: "barcode.viewfinder", title: "capture.barcode",
+                              subtitle: "capture.barcode.sub",
+                              gradient: LinearGradient(colors: [Theme.Palette.carbs, Theme.Palette.calorie],
+                                                       startPoint: .topLeading, endPoint: .bottomTrailing)) {
+                    captureSheet = .barcode
                 }
                 CaptureOption(icon: "magnifyingglass", title: "capture.search",
                               subtitle: "capture.search.sub",

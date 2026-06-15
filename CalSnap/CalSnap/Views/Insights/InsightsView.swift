@@ -140,9 +140,16 @@ struct InsightsView: View {
                     .font(Theme.Font.caption(13))
                     .foregroundStyle(Theme.textSecondary(scheme))
             }
-            Text(LocalizedStringKey(appState.profile.goal.titleKey))
-                .font(Theme.Font.caption(12))
-                .foregroundStyle(Theme.textSecondary(scheme))
+            if let weeks = appState.profile.weeksToTarget,
+               let target = appState.profile.targetWeightKg {
+                Text("profile.eta \(target.formatted(.number.precision(.fractionLength(0)))) \(weeks)")
+                    .font(Theme.Font.caption(12))
+                    .foregroundStyle(Theme.textSecondary(scheme))
+            } else {
+                Text(LocalizedStringKey(appState.profile.goal.titleKey))
+                    .font(Theme.Font.caption(12))
+                    .foregroundStyle(Theme.textSecondary(scheme))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface()

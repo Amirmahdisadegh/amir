@@ -60,6 +60,19 @@ final class CaptureViewModel {
         }
     }
 
+    @MainActor
+    func analyzeBarcode(_ code: String) async {
+        phase = .analyzing
+        previewImage = nil
+        if let result = await OpenFoodFactsService.lookup(code) {
+            apply(result)
+            phase = .review
+            Haptics.success()
+        } else {
+            phase = .failed("No product found for this barcode. Try a photo or manual search.")
+        }
+    }
+
     private func apply(_ result: FoodAnalysis) {
         title = result.title
         items = result.items

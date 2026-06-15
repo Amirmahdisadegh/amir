@@ -6,6 +6,8 @@ struct ProfileEditorView: View {
     @State private var draft = UserProfile()
     @State private var useManualGoal = false
     @State private var manualGoal = 2000
+    @State private var useTarget = false
+    @State private var targetWeight: Double = 70
 
     var body: some View {
         NavigationStack {
@@ -36,6 +38,20 @@ struct ProfileEditorView: View {
                     }
                 }
 
+                if draft.goal != .maintain {
+                    Section {
+                        Toggle("profile.useTarget", isOn: $useTarget)
+                        if useTarget {
+                            sliderRow("profile.targetWeight", value: $targetWeight,
+                                      range: 35...200, unit: "kg")
+                        }
+                    } footer: {
+                        if useTarget {
+                            Text(etaText)
+                        }
+                    }
+                }
+
                 Section {
                     Toggle("profile.manualGoal", isOn: $useManualGoal)
                     if useManualGoal {
@@ -62,8 +78,23 @@ struct ProfileEditorView: View {
                     useManualGoal = true
                     manualGoal = manual
                 }
+                if let target = draft.targetWeightKg {
+                    useTarget = true
+                    targetWeight = target
+                } else {
+                    targetWeight = draft.weightKg
+                }
             }
         }
+    }
+
+    private var etaText: LocalizedStringKey {
+        var copy = draft
+        copy.targetWeightKg = targetWeight
+        if let weeks = copy.weeksToTarget {
+            return "profile.eta \(targetWeight.formatted(.number.precision(.fractionLength(0)))) \(weeks)"
+        }
+        return "profile.etaNone"
     }
 
     private var computedGoal: Int {
@@ -87,6 +118,7 @@ struct ProfileEditorView: View {
 
     private func save() {
         draft.manualCalorieGoal = useManualGoal ? manualGoal : nil
+        draft.targetWeightKg = (useTarget && draft.goal != .maintain) ? targetWeight : nil
         appState.profile = draft
         Haptics.success()
         dismiss()

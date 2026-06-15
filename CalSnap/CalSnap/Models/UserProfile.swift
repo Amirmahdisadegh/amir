@@ -56,6 +56,25 @@ struct UserProfile: Codable, Equatable {
     /// If set, overrides the computed target.
     var manualCalorieGoal: Int? = nil
 
+    /// Optional goal weight (used to estimate time-to-goal).
+    var targetWeightKg: Double? = nil
+
+    /// Estimated kg of weight change per week from the calorie delta (±).
+    var projectedKgPerWeek: Double {
+        Double(goal.calorieDelta * 7) / 7700.0
+    }
+
+    /// Estimated number of weeks to reach `targetWeightKg`, if sensible.
+    var weeksToTarget: Int? {
+        guard let target = targetWeightKg else { return nil }
+        let perWeek = projectedKgPerWeek
+        guard abs(perWeek) > 0.01 else { return nil }
+        let remaining = target - weightKg
+        // Direction must match the goal (losing toward a lower target, etc.)
+        guard remaining * perWeek > 0 else { return nil }
+        return max(1, Int((abs(remaining) / abs(perWeek)).rounded()))
+    }
+
     /// Mifflin-St Jeor BMR.
     var bmr: Double {
         let base = 10 * weightKg + 6.25 * heightCm - 5 * Double(age)
