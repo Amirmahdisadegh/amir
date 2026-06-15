@@ -38,8 +38,9 @@ struct CardSurface: ViewModifier {
                 shape.strokeBorder(Theme.glassBorder(scheme), lineWidth: 1)
                     .allowsHitTesting(false)
             )
-            .shadow(color: Color.black.opacity(scheme == .dark ? 0.45 : 0.12),
-                    radius: 20, x: 0, y: 12)
+            // Lighter shadow keeps scrolling smooth (offscreen shadow passes are costly).
+            .shadow(color: Color.black.opacity(scheme == .dark ? 0.22 : 0.08),
+                    radius: 8, x: 0, y: 4)
     }
 }
 

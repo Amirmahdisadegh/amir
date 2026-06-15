@@ -93,8 +93,19 @@
 "capture.search" = "Search / Add Manually";
 "capture.search.sub" = "Pick from a food list";
 
+/* Reminders */
+"settings.reminders" = "Meal Reminders";
+"settings.reminders.sub" = "Daily nudges to log your meals";
+
 /* Insights */
 "insights.title" = "Insights";
+"insights.weight" = "Weight trend";
+"insights.water" = "Avg water";
+"insights.streak" = "Streak";
+"insights.bestStreak" = "Best streak";
+"insights.projection" = "Goal projection";
+"insights.perWeek" = "/ week";
+"insights.noWeight" = "Log your weight to see the trend.";
 "insights.avg" = "7-day average";
 "insights.last7" = "Last 7 days";
 "insights.goalLine" = "Goal";

@@ -98,6 +98,11 @@ final class AppState {
         didSet { UserDefaults.standard.set(waterGoalML, forKey: Keys.waterGoal) }
     }
 
+    /// Whether daily meal reminders are scheduled.
+    var remindersEnabled: Bool {
+        didSet { UserDefaults.standard.set(remindersEnabled, forKey: Keys.reminders) }
+    }
+
     /// The AI service currently used for recognition.
     var activeProvider: AIProvider {
         didSet { UserDefaults.standard.set(activeProvider.rawValue, forKey: Keys.provider) }
@@ -164,6 +169,7 @@ final class AppState {
             waterByDay = [:]
         }
         waterGoalML = defaults.object(forKey: Keys.waterGoal) as? Int ?? 2000
+        remindersEnabled = defaults.bool(forKey: Keys.reminders)
         activeProvider = AIProvider(rawValue: defaults.string(forKey: Keys.provider) ?? "")
             ?? .claude
 
@@ -231,6 +237,7 @@ final class AppState {
         static let burned = "calsnap.burnedByDay"
         static let water = "calsnap.waterByDay"
         static let waterGoal = "calsnap.waterGoal"
+        static let reminders = "calsnap.reminders"
         static let provider = "calsnap.activeProvider"
         static let accent = "calsnap.accent"
         static let customAccent = "calsnap.customAccent"

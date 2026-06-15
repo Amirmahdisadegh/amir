@@ -20,6 +20,15 @@ struct CalorieRing: View {
             Circle()
                 .stroke(Theme.separator(scheme), lineWidth: 18)
 
+            // Soft glow under the progress arc.
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(over ? Theme.Palette.calorie : Theme.Palette.brand,
+                        style: StrokeStyle(lineWidth: 18, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .blur(radius: 12)
+                .opacity(0.55)
+
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
@@ -31,7 +40,7 @@ struct CalorieRing: View {
 
             VStack(spacing: 2) {
                 Text("\(remaining.grouped)")
-                    .font(Theme.Font.mono(40))
+                    .font(Theme.Font.mono(42))
                     .foregroundStyle(Theme.textPrimary(scheme))
                     .contentTransition(.numericText())
                 Text(over ? "label.over" : "label.remaining")

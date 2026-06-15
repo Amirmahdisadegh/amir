@@ -12,6 +12,7 @@ struct InsightsView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var scheme
     @Query(sort: \FoodEntry.date, order: .reverse) private var entries: [FoodEntry]
+    @Query(sort: \WeightEntry.date, order: .forward) private var weights: [WeightEntry]
 
     /// Calories per day for the last 7 days, oldest first.
     private var week: [DayBucket] {
@@ -55,8 +56,11 @@ struct InsightsView: View {
                     .padding(.top, 8)
 
                 summaryRow
+                statsRow
                 weeklyChartCard
+                weightCard
                 macroCard
+                projectionCard
                 Color.clear.frame(height: 96)
             }
             .padding(.horizontal, Theme.Space.md)
@@ -71,6 +75,77 @@ struct InsightsView: View {
             StatPill(icon: "target", label: "stat.goal",
                      value: goal.grouped, tint: Theme.Palette.calorie)
         }
+    }
+
+    // MARK: Extra stats
+
+    private var currentStreak: Int { Stats.currentStreak(entries) }
+    private var bestStreak: Int { Stats.longestStreak(entries) }
+
+    private var weekWaterAvg: Int {
+        let cal = Calendar.current
+        let vals = (0..<7).compactMap { offset -> Int? in
+            guard let day = cal.date(byAdding: .day, value: -offset, to: .now) else { return nil }
+            let w = appState.water(on: day)
+            return w > 0 ? w : nil
+        }
+        guard !vals.isEmpty else { return 0 }
+        return vals.reduce(0, +) / vals.count
+    }
+
+    private var statsRow: some View {
+        HStack(spacing: 10) {
+            StatPill(icon: "flame.fill", label: "insights.streak",
+                     value: "\(currentStreak)", tint: Theme.Palette.calorie)
+            StatPill(icon: "trophy.fill", label: "insights.bestStreak",
+                     value: "\(bestStreak)", tint: Theme.Palette.carbs)
+            StatPill(icon: "drop.fill", label: "insights.water",
+                     value: "\(weekWaterAvg)", tint: Theme.Palette.protein)
+        }
+    }
+
+    private var weightCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.md) {
+            SectionHeader("insights.weight")
+            if weights.count >= 2 {
+                Chart(weights, id: \.id) { e in
+                    LineMark(x: .value("Date", e.date), y: .value("kg", e.kg))
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(Theme.Palette.brand)
+                    PointMark(x: .value("Date", e.date), y: .value("kg", e.kg))
+                        .foregroundStyle(Theme.Palette.brand)
+                }
+                .chartYScale(domain: .automatic(includesZero: false))
+                .frame(height: 180)
+            } else {
+                Text("insights.noWeight")
+                    .font(Theme.Font.body(13))
+                    .foregroundStyle(Theme.textSecondary(scheme))
+                    .padding(.vertical, 20)
+            }
+        }
+        .cardSurface()
+    }
+
+    private var projectionCard: some View {
+        // ~7700 kcal per kg of body weight.
+        let perWeek = Double(appState.profile.goal.calorieDelta * 7) / 7700.0
+        return VStack(alignment: .leading, spacing: 8) {
+            SectionHeader("insights.projection")
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(String(format: "%+.2f kg", perWeek))
+                    .font(Theme.Font.display(26))
+                    .foregroundStyle(perWeek <= 0 ? Theme.Palette.success : Theme.Palette.calorie)
+                Text("insights.perWeek")
+                    .font(Theme.Font.caption(13))
+                    .foregroundStyle(Theme.textSecondary(scheme))
+            }
+            Text(LocalizedStringKey(appState.profile.goal.titleKey))
+                .font(Theme.Font.caption(12))
+                .foregroundStyle(Theme.textSecondary(scheme))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface()
     }
 
     private var weeklyChartCard: some View {

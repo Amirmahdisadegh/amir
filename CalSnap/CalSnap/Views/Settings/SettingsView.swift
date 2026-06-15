@@ -75,6 +75,20 @@ struct SettingsView: View {
                 }
                 .cardSurface(padding: 6)
 
+                // Reminders
+                VStack(spacing: 0) {
+                    Toggle(isOn: Binding(
+                        get: { state.remindersEnabled },
+                        set: { toggleReminders($0) }
+                    )) {
+                        rowLabel(icon: "bell.fill", tint: Theme.Palette.carbs,
+                                 title: "settings.reminders", subtitle: "settings.reminders.sub")
+                    }
+                    .tint(Theme.Palette.brand)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                }
+                .cardSurface(padding: 6)
+
                 aboutCard
                 Color.clear.frame(height: 96)
             }
@@ -132,6 +146,18 @@ struct SettingsView: View {
     private var profileSubtitle: LocalizedStringKey {
         let p = appState.profile
         return LocalizedStringKey("\(Int(p.weightKg)) kg · \(Int(p.heightCm)) cm · \(p.age)")
+    }
+
+    private func toggleReminders(_ on: Bool) {
+        if on {
+            Task {
+                let granted = await NotificationService.requestAndSchedule()
+                await MainActor.run { appState.remindersEnabled = granted }
+            }
+        } else {
+            NotificationService.cancelAll()
+            appState.remindersEnabled = false
+        }
     }
 
     private var aiSubtitle: LocalizedStringKey {
