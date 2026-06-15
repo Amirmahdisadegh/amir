@@ -18,18 +18,24 @@ struct CardSurface: ViewModifier {
             .background(shape.fill(.ultraThinMaterial))
             // Solid backing that fades out as the glass gets more translucent.
             .background(shape.fill(Theme.surface(scheme).opacity(solidOpacity)))
-            // Subtle inner tint + top sheen for a glassier read.
+            // Decorative sheen + border — must NOT intercept touches, otherwise
+            // buttons inside the card become untappable.
             .overlay(
-                shape.fill(
-                    LinearGradient(
-                        colors: scheme == .dark
-                            ? [Color.white.opacity(0.10), Color.white.opacity(0.02)]
-                            : [Color.white.opacity(0.45), Color.white.opacity(0.10)],
-                        startPoint: .top, endPoint: .bottom
+                shape
+                    .fill(
+                        LinearGradient(
+                            colors: scheme == .dark
+                                ? [Color.white.opacity(0.10), Color.white.opacity(0.02)]
+                                : [Color.white.opacity(0.45), Color.white.opacity(0.10)],
+                            startPoint: .top, endPoint: .bottom
+                        )
                     )
-                )
+                    .allowsHitTesting(false)
             )
-            .overlay(shape.strokeBorder(Theme.glassBorder(scheme), lineWidth: 1))
+            .overlay(
+                shape.strokeBorder(Theme.glassBorder(scheme), lineWidth: 1)
+                    .allowsHitTesting(false)
+            )
             .shadow(color: Color.black.opacity(scheme == .dark ? 0.45 : 0.12),
                     radius: 20, x: 0, y: 12)
     }
