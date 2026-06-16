@@ -95,6 +95,22 @@
 "capture.barcode" = "Scan Barcode";
 "capture.barcode.sub" = "Packaged foods (Open Food Facts)";
 
+/* Account & sync */
+"settings.account" = "Account & Sync";
+"settings.account.sub" = "Back up & sync across devices";
+"account.title" = "Account";
+"account.subtitle" = "Sign in to back up & sync";
+"account.lastSync %@" = "Last synced %@";
+"account.setup" = "Firebase setup";
+"account.setupHelp" = "Create a free Firebase project, enable Email/Password auth and a Firestore database, then paste your Web API Key and Project ID here.";
+"account.email" = "Email";
+"account.password" = "Password";
+"account.signIn" = "Sign In";
+"account.signUp" = "Create Account";
+"account.backup" = "Back up now";
+"account.restore" = "Restore from cloud";
+"account.signOut" = "Sign out";
+
 /* Reminders */
 "settings.reminders" = "Meal Reminders";
 "settings.reminders.sub" = "Daily nudges to log your meals";

@@ -1,12 +1,13 @@
 import SwiftUI
 
 enum SettingsSheet: String, Identifiable {
-    case profile, ai, burned, appearance
+    case profile, ai, burned, appearance, account
     var id: String { rawValue }
 }
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(CloudAccount.self) private var cloud
     @Environment(\.colorScheme) private var scheme
 
     @State private var activeSheet: SettingsSheet?
@@ -21,6 +22,17 @@ struct SettingsView: View {
                     .padding(.top, 8)
 
                 goalCard
+
+                // Account & sync
+                VStack(spacing: 0) {
+                    settingsRow(icon: cloud.isSignedIn ? "checkmark.icloud.fill" : "icloud",
+                                tint: Theme.Palette.protein,
+                                title: "settings.account",
+                                subtitle: accountSubtitle) {
+                        activeSheet = .account
+                    }
+                }
+                .cardSurface(padding: 6)
 
                 // Appearance
                 VStack(alignment: .leading, spacing: 12) {
@@ -101,8 +113,14 @@ struct SettingsView: View {
             case .ai:         AISettingsView()
             case .burned:     BurnedEditorView().presentationDetents([.height(280)])
             case .appearance: AppearanceSettingsView()
+            case .account:    AccountView()
             }
         }
+    }
+
+    private var accountSubtitle: LocalizedStringKey {
+        if cloud.isSignedIn { return LocalizedStringKey(cloud.email ?? "Signed in") }
+        return "settings.account.sub"
     }
 
     // MARK: Goal summary card

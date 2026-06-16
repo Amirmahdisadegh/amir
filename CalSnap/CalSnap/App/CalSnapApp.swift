@@ -4,12 +4,14 @@ import SwiftData
 @main
 struct CalSnapApp: App {
     @State private var appState = AppState()
+    @State private var cloud = CloudAccount()
     private let container: ModelContainer = CalSnapApp.makeContainer()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(appState)
+                .environment(cloud)
                 .tint(Theme.Palette.brand)
         }
         .modelContainer(container)
