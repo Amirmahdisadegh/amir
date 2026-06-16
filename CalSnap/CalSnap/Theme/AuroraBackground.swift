@@ -21,12 +21,16 @@ struct AuroraBackground: View {
         case .black:    return 0.55   // faint glow over pure black
         case .graphite: return 0.0    // flat, no blobs
         case .photo:    return 0.0    // photo provides the backdrop
+        case .mesh:     return 0.0    // mesh provides the colour
         }
     }
 
     var body: some View {
         ZStack {
             base
+            if Theme.backgroundStyle == .mesh {
+                MeshBackground(scheme: scheme)
+            }
             if Theme.backgroundStyle == .photo, let img = Theme.backgroundImage {
                 GeometryReader { geo in
                     Image(uiImage: img)
@@ -75,6 +79,38 @@ struct AuroraBackground: View {
                           y: geo.size.height * (0.5 + ny * 0.5))
                 .blur(radius: 90)
                 .opacity(opacity)
+        }
+    }
+}
+
+/// A modern iOS 18 mesh gradient built from the accent palette.
+/// Falls back to a diagonal gradient on iOS 17.
+struct MeshBackground: View {
+    let scheme: ColorScheme
+    var accent: AccentPreset = Theme.accent
+
+    var body: some View {
+        let a = accent
+        let base = scheme == .dark ? Color(hex: 0x0A0C12) : Color(hex: 0x223047)
+        let edge = scheme == .dark ? 0.16 : 0.0   // darken edge mids in dark mode
+        if #available(iOS 18.0, *) {
+            MeshGradient(
+                width: 3, height: 3,
+                points: [
+                    .init(0, 0), .init(0.5, 0), .init(1, 0),
+                    .init(0, 0.5), .init(0.5, 0.5), .init(1, 0.5),
+                    .init(0, 1), .init(0.5, 1), .init(1, 1)
+                ],
+                colors: [
+                    a.brandDeep,                       a.aurora[2].adjusted(brightness: -edge), a.brand,
+                    a.aurora[0].adjusted(brightness: -edge), base,                              a.aurora[1].adjusted(brightness: -edge),
+                    a.brand,                           a.aurora[3].adjusted(brightness: -edge), a.brandDeep
+                ]
+            )
+            .ignoresSafeArea()
+        } else {
+            LinearGradient(colors: [a.brandDeep, base, a.brand],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 }

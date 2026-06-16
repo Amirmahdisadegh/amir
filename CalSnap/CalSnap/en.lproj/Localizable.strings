@@ -152,6 +152,7 @@
 "appearance.glass" = "Glass amount";
 "appearance.icon" = "App icon";
 "action.apply" = "Apply";
+"bg.mesh" = "Mesh";
 "bg.aurora" = "Aurora";
 "bg.black" = "Black";
 "bg.graphite" = "Graphite";

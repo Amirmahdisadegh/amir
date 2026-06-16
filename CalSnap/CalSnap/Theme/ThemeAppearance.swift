@@ -81,7 +81,8 @@ extension Color {
 
 /// Background treatment behind the glass.
 enum BackgroundStyle: String, CaseIterable, Identifiable {
-    case aurora     // colourful animated blobs (default)
+    case mesh       // modern iOS 18 mesh gradient (falls back to aurora)
+    case aurora     // colourful blurred blobs
     case black      // pure black (OLED)
     case graphite   // flat graphite, minimal
     case vivid      // bolder, more saturated blobs
@@ -90,6 +91,7 @@ enum BackgroundStyle: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var name: String {
         switch self {
+        case .mesh:     return "Mesh"
         case .aurora:   return "Aurora"
         case .black:    return "Pure Black"
         case .graphite: return "Graphite"

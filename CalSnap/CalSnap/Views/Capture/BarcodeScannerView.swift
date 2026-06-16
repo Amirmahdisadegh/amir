@@ -94,8 +94,15 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
     }
 
     @objc private func cancelTapped() {
-        session.stopRunning()
+        stopSession()
         onCancel?()
+    }
+
+    private func stopSession() {
+        guard session.isRunning else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.session.stopRunning()
+        }
     }
 
     override func viewDidLayoutSubviews() {
@@ -105,7 +112,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        if session.isRunning { session.stopRunning() }
+        stopSession()
     }
 
     func metadataOutput(_ output: AVCaptureMetadataOutput,
@@ -116,7 +123,7 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
               let value = object.stringValue else { return }
         didScan = true
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        session.stopRunning()
+        stopSession()
         onScan?(value)
     }
 }

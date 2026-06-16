@@ -99,6 +99,9 @@ struct AppearanceSettingsView: View {
     private var previewBackground: some View {
         ZStack {
             (bg == .black ? Color.black : Color(hex: 0x0B0E14))
+            if bg == .mesh {
+                MeshBackground(scheme: .dark, accent: accent)
+            }
             if bg == .photo, let img = photo {
                 Image(uiImage: img).resizable().scaledToFill()
                     .overlay(Color.black.opacity(0.35))
@@ -287,6 +290,7 @@ struct AppearanceSettingsView: View {
 
     private func bgName(_ s: BackgroundStyle) -> String {
         switch s {
+        case .mesh:     return "bg.mesh"
         case .aurora:   return "bg.aurora"
         case .black:    return "bg.black"
         case .graphite: return "bg.graphite"
