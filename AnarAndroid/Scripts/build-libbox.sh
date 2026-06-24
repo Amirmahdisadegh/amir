@@ -36,26 +36,26 @@ if [[ -z "${ANDROID_NDK_HOME:-}" || ! -d "${ANDROID_NDK_HOME:-/nonexistent}" ]];
 fi
 echo "==> Using NDK: $ANDROID_NDK_HOME"
 
-echo "==> Installing gomobile…"
+echo "==> Installing gomobile..."
 go install golang.org/x/mobile/cmd/gomobile@latest
 go install golang.org/x/mobile/cmd/gobind@latest
 export PATH="$PATH:$(go env GOPATH)/bin"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-echo "==> Fetching sing-box $SINGBOX_VERSION…"
+echo "==> Fetching sing-box $SINGBOX_VERSION..."
 git clone --depth 1 -b "$SINGBOX_VERSION" https://github.com/SagerNet/sing-box "$WORK/sing-box"
 
 # pidfd_android.go uses //go:linkname to os.checkPidfdOnce, a symbol removed in
 # Go 1.25+. The workaround it provided is unnecessary on modern Go, so neuter the
 # file to make the build work with any Go version.
-echo "==> Patching pidfd_android.go for current Go…"
+echo "==> Patching pidfd_android.go for current Go..."
 echo 'package libbox' > "$WORK/sing-box/experimental/libbox/pidfd_android.go"
 
 cd "$WORK/sing-box"
-echo "==> gomobile init…"
+echo "==> gomobile init..."
 gomobile init
-echo "==> Building libbox.aar (this takes a few minutes)…"
+echo "==> Building libbox.aar (this takes a few minutes)..."
 gomobile bind -v -target=android -androidapi 21 \
   -tags "$TAGS" \
   -o "$OUT/libbox.aar" \
