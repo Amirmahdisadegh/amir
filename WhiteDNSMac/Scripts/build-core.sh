@@ -27,7 +27,7 @@ if [[ -n "${STORMDNS_SRC:-}" ]]; then
   echo "==> Using local StormDNS source: $STORMDNS_SRC"
   SRC="$STORMDNS_SRC"
 else
-  echo "==> Cloning StormDNS…"
+  echo "==> Cloning StormDNS..."
   git clone --depth 1 "$REPO_URL" "$WORK/StormDNS"
   SRC="$WORK/StormDNS"
 fi
@@ -36,7 +36,7 @@ mkdir -p "$OUT_DIR"
 
 build() {
   local arch="$1" out="$2"
-  echo "==> Building darwin/$arch…"
+  echo "==> Building darwin/$arch..."
   ( cd "$SRC" && CGO_ENABLED=0 GOOS=darwin GOARCH="$arch" \
       go build -trimpath -ldflags="-s -w" -o "$out" ./cmd/client )
 }
@@ -47,7 +47,7 @@ build arm64 "$ARM"
 build amd64 "$AMD"
 
 if command -v lipo >/dev/null 2>&1; then
-  echo "==> Creating universal binary with lipo…"
+  echo "==> Creating universal binary with lipo..."
   lipo -create "$ARM" "$AMD" -output "$OUT_BIN"
 else
   echo "==> lipo not found; installing arm64 build only (Apple Silicon)."
