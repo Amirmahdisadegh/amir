@@ -1,0 +1,2 @@
+# Core binaries (sing-box, stormdns) are placed here by Scripts/build-cores.sh
+# and are gitignored.

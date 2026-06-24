@@ -1,0 +1,13 @@
+# Generated Xcode project
+*.xcodeproj
+*.xcworkspace
+
+# Core binaries built locally by Scripts/build-cores.sh
+Anar/Resources/sing-box
+Anar/Resources/stormdns
+
+# Xcode / macOS
+.DS_Store
+build/
+DerivedData/
+xcuserdata/
