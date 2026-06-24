@@ -5,9 +5,9 @@
 # simple NewService(config, platformInterface) API used by AnarVpnService.
 #
 # Requirements:
-#   - Go 1.23+
-#   - Android SDK + NDK (set ANDROID_HOME / ANDROID_NDK_HOME, or install via
-#     Android Studio: SDK Manager -> SDK Tools -> NDK (Side by side))
+#   - Go (any recent version)
+#   - Android SDK + NDK (set ANDROID_NDK_HOME, or install the NDK via Android
+#     Studio -> SDK Tools -> NDK; this script auto-detects the default location)
 #
 set -euo pipefail
 
@@ -21,12 +21,20 @@ mkdir -p "$OUT"
 
 command -v go >/dev/null 2>&1 || { echo "error: Go is not installed (https://go.dev/dl/)"; exit 1; }
 
-if [[ -z "${ANDROID_NDK_HOME:-}" && -z "${ANDROID_HOME:-}" ]]; then
-  echo "warning: ANDROID_NDK_HOME / ANDROID_HOME not set."
-  echo "Install the NDK in Android Studio (SDK Tools -> NDK) and export, e.g.:"
-  echo '  export ANDROID_HOME=$HOME/Library/Android/sdk'
-  echo '  export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/<version>'
+# Auto-detect the Android SDK/NDK if not provided.
+if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
+  DEF_SDK="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+  if [[ -d "$DEF_SDK/ndk" ]]; then
+    export ANDROID_HOME="$DEF_SDK"
+    export ANDROID_NDK_HOME="$DEF_SDK/ndk/$(ls "$DEF_SDK/ndk" | sort -V | tail -1)"
+  fi
 fi
+if [[ -z "${ANDROID_NDK_HOME:-}" || ! -d "${ANDROID_NDK_HOME:-/nonexistent}" ]]; then
+  echo "error: Android NDK not found. Install it in Android Studio (SDK Tools -> NDK),"
+  echo "       or set ANDROID_NDK_HOME to its path."
+  exit 1
+fi
+echo "==> Using NDK: $ANDROID_NDK_HOME"
 
 echo "==> Installing gomobile…"
 go install golang.org/x/mobile/cmd/gomobile@latest
@@ -37,6 +45,12 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 echo "==> Fetching sing-box $SINGBOX_VERSION…"
 git clone --depth 1 -b "$SINGBOX_VERSION" https://github.com/SagerNet/sing-box "$WORK/sing-box"
+
+# pidfd_android.go uses //go:linkname to os.checkPidfdOnce, a symbol removed in
+# Go 1.25+. The workaround it provided is unnecessary on modern Go, so neuter the
+# file to make the build work with any Go version.
+echo "==> Patching pidfd_android.go for current Go…"
+echo 'package libbox' > "$WORK/sing-box/experimental/libbox/pidfd_android.go"
 
 cd "$WORK/sing-box"
 echo "==> gomobile init…"
