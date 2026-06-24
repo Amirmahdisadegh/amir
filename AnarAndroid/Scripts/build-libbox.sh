@@ -36,6 +36,25 @@ if [[ -z "${ANDROID_NDK_HOME:-}" || ! -d "${ANDROID_NDK_HOME:-/nonexistent}" ]];
 fi
 echo "==> Using NDK: $ANDROID_NDK_HOME"
 
+# gomobile needs a real JDK (javac). macOS ships only a stub; prefer Android
+# Studio's bundled JetBrains Runtime if no JDK is on PATH.
+if ! javac -version >/dev/null 2>&1; then
+  for jbr in "/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+             "$HOME/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+             "/Applications/Android Studio Preview.app/Contents/jbr/Contents/Home"; do
+    if [[ -x "$jbr/bin/javac" ]]; then
+      export JAVA_HOME="$jbr"
+      export PATH="$JAVA_HOME/bin:$PATH"
+      break
+    fi
+  done
+fi
+if ! javac -version >/dev/null 2>&1; then
+  echo "error: no JDK found (javac). Install a JDK, or Android Studio (which bundles one)."
+  exit 1
+fi
+echo "==> Using JDK: $(command -v javac)"
+
 echo "==> Installing gomobile..."
 go install golang.org/x/mobile/cmd/gomobile@latest
 go install golang.org/x/mobile/cmd/gobind@latest
