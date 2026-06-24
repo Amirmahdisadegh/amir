@@ -10,10 +10,13 @@ enum SingboxConfig {
 
         root["log"] = ["level": settings.logLevel, "timestamp": true]
 
+        // "remote" tunnels DNS through the proxy; "local" uses the OS resolver
+        // (direct) and bootstraps the proxy server's own domain — this avoids the
+        // resolve-loop without a forbidden detour-to-direct.
         root["dns"] = [
             "servers": [
                 dnsServer(settings.dnsServer),
-                ["type": "udp", "tag": "local", "server": "223.5.5.5", "detour": "direct"],
+                ["type": "local", "tag": "local"],
             ],
             "strategy": "prefer_ipv4",
         ]
