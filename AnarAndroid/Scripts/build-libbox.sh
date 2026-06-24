@@ -53,6 +53,9 @@ echo "==> Patching pidfd_android.go for current Go..."
 echo 'package libbox' > "$WORK/sing-box/experimental/libbox/pidfd_android.go"
 
 cd "$WORK/sing-box"
+# Newer gomobile requires golang.org/x/mobile in the module's dependency graph.
+echo "==> Adding gomobile bind dependency to the module..."
+go get golang.org/x/mobile/bind
 echo "==> gomobile init..."
 gomobile init
 echo "==> Building libbox.aar (this takes a few minutes)..."
