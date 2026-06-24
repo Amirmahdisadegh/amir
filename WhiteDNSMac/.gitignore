@@ -1,0 +1,12 @@
+# Generated Xcode project
+*.xcodeproj
+*.xcworkspace
+
+# The StormDNS core binary is built locally by Scripts/build-core.sh
+WhiteDNS/Resources/stormdns
+
+# Xcode / macOS
+.DS_Store
+build/
+DerivedData/
+xcuserdata/
