@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose draws the UI; this only needs to be a valid, action-bar-less
+         window theme. Using a platform theme avoids extra XML dependencies. -->
+    <style name="Theme.Anar" parent="@android:style/Theme.Material.NoActionBar" />
+</resources>
