@@ -69,12 +69,19 @@ enum SystemProxy {
     }
 
     static func admin(_ shellCommand: String) throws {
+        _ = try adminCapturing(shellCommand)
+    }
+
+    /// Runs a shell command as root via one admin prompt and returns its output.
+    @discardableResult
+    static func adminCapturing(_ shellCommand: String) throws -> String {
         let escaped = shellCommand
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
         let src = "do shell script \"\(escaped)\" with administrator privileges"
         var err: NSDictionary?
-        NSAppleScript(source: src)?.executeAndReturnError(&err)
+        let result = NSAppleScript(source: src)?.executeAndReturnError(&err)
         if let err { throw ProxyError.auth((err[NSAppleScript.errorMessage] as? String) ?? "unknown") }
+        return result?.stringValue ?? ""
     }
 }

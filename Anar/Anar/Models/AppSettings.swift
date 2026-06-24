@@ -13,7 +13,7 @@ enum RoutingMode: String, Codable, CaseIterable {
 }
 
 struct AppSettings: Codable, Equatable {
-    var mode: RoutingMode = .tun
+    var mode: RoutingMode = .proxy
     var mixedPort: Int = 2080          // local SOCKS/HTTP listener (proxy mode)
     var clashApiPort: Int = 9090       // sing-box Clash API for live stats
     var logLevel: String = "info"

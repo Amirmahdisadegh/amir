@@ -11,7 +11,10 @@ enum SingboxConfig {
         root["log"] = ["level": settings.logLevel, "timestamp": true]
 
         root["dns"] = [
-            "servers": [["tag": "dns-remote", "address": settings.dnsServer]],
+            "servers": [
+                dnsServer(settings.dnsServer),
+                ["type": "udp", "tag": "local", "server": "223.5.5.5", "detour": "direct"],
+            ],
             "strategy": "prefer_ipv4",
         ]
 
@@ -55,6 +58,7 @@ enum SingboxConfig {
             "rules": rules,
             "final": proxyTag,
             "auto_detect_interface": true,
+            "default_domain_resolver": "local",
         ]
 
         // Live stats API
@@ -65,6 +69,37 @@ enum SingboxConfig {
         ]
 
         return try JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    /// Builds a sing-box 1.12+ DNS server object from a "scheme://host" string.
+    /// Examples: "tls://8.8.8.8", "https://dns.google/dns-query", "1.1.1.1".
+    private static func dnsServer(_ spec: String) -> [String: Any] {
+        var type = "udp"
+        var server = spec
+        if let r = spec.range(of: "://") {
+            type = String(spec[..<r.lowerBound]).lowercased()
+            server = String(spec[r.upperBound...])
+        }
+        // Keep only the host for tls/udp/quic; https keeps the full host.
+        if type != "https", let slash = server.firstIndex(of: "/") {
+            server = String(server[..<slash])
+        }
+        switch type {
+        case "https": return ["type": "https", "tag": "remote", "server": serverHost(server), "path": serverPath(server), "domain_resolver": "local"]
+        case "tls": return ["type": "tls", "tag": "remote", "server": server]
+        case "quic": return ["type": "quic", "tag": "remote", "server": server]
+        case "h3": return ["type": "h3", "tag": "remote", "server": serverHost(server), "path": serverPath(server), "domain_resolver": "local"]
+        default: return ["type": "udp", "tag": "remote", "server": server]
+        }
+    }
+
+    private static func serverHost(_ s: String) -> String {
+        if let slash = s.firstIndex(of: "/") { return String(s[..<slash]) }
+        return s
+    }
+    private static func serverPath(_ s: String) -> String {
+        if let slash = s.firstIndex(of: "/") { return String(s[slash...]) }
+        return "/dns-query"
     }
 
     // MARK: - Outbound builders

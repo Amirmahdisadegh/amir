@@ -41,6 +41,21 @@ final class ConnectionManager: ObservableObject {
         core.onLine = { line in
             MainActor.assumeIsolated { [weak self] in self?.log.append(line) }
         }
+        core.onExit = { status in
+            MainActor.assumeIsolated { [weak self] in self?.handleCoreExit(status) }
+        }
+    }
+
+    /// The core process died while we expected it running — surface the failure.
+    private func handleCoreExit(_ status: Int32) {
+        guard state == .connecting || state == .connected else { return }
+        readyTask?.cancel(); readyTask = nil
+        statsTask?.cancel(); statsTask = nil
+        removeSystemProxy()
+        let recent = log.lines.suffix(3).map(\.text).joined(separator: " · ")
+        state = .error(recent.isEmpty ? "Core stopped unexpectedly (code \(status))" : recent)
+        log.append("!!! sing-box exited (code \(status))")
+        upSpeed = 0; downSpeed = 0
     }
 
     // MARK: - Public
@@ -67,6 +82,10 @@ final class ConnectionManager: ObservableObject {
             let data = try SingboxConfig.generate(profile: profile, settings: settings)
             try data.write(to: configURL)
 
+            // Validate the config first so a bad server shows a precise error
+            // instead of a silent failure.
+            try core.check(binary: binary, configURL: configURL)
+
             log.append(">>> Connecting to \(profile.name) [\(profile.type.display), \(settings.mode.display)]")
             state = .connecting
 
@@ -74,7 +93,7 @@ final class ConnectionManager: ObservableObject {
             case .proxy:
                 try core.startChild(binary: binary, configURL: configURL, workDir: workDir)
             case .tun:
-                try core.startRoot(binary: binary, configURL: configURL, workDir: workDir)
+                try core.startDaemon(binary: binary, configURL: configURL, workDir: workDir)
             }
             startReadyWatch()
         } catch {
@@ -128,7 +147,9 @@ final class ConnectionManager: ObservableObject {
 
     private func markTimedOut() {
         guard state == .connecting else { return }
-        state = .error("Core did not come up — check the logs")
+        let recent = log.lines.suffix(2).map(\.text).joined(separator: " · ")
+        state = .error(recent.isEmpty ? "Core did not come up — open Logs" : recent)
+        log.append("!!! Timed out waiting for sing-box to come up")
         core.stop()
     }
 
