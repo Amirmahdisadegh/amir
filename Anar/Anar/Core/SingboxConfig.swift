@@ -59,14 +59,15 @@ enum SingboxConfig {
         if settings.routingRule != .global {
             rules.append(["ip_is_private": true, "outbound": "direct"])
         }
-        if settings.adBlock {
-            ruleSets.append(remoteRuleSet("geosite-ads", "geosite-category-ads-all"))
+        if settings.adBlock, let rs = localRuleSet("geosite-ads", "geosite-category-ads-all") {
+            ruleSets.append(rs)
             rules.append(["rule_set": ["geosite-ads"], "action": "reject"])
         }
         if settings.routingRule == .bypassIran {
-            ruleSets.append(remoteRuleSet("geoip-ir", "geoip-ir"))
-            ruleSets.append(remoteRuleSet("geosite-ir", "geosite-ir"))
-            rules.append(["rule_set": ["geoip-ir", "geosite-ir"], "outbound": "direct"])
+            var irTags: [String] = []
+            if let rs = localRuleSet("geoip-ir", "geoip-ir") { ruleSets.append(rs); irTags.append("geoip-ir") }
+            if let rs = localRuleSet("geosite-ir", "geosite-ir") { ruleSets.append(rs); irTags.append("geosite-ir") }
+            if !irTags.isEmpty { rules.append(["rule_set": irTags, "outbound": "direct"]) }
         }
 
         var route: [String: Any] = [
@@ -88,15 +89,12 @@ enum SingboxConfig {
         return try JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys])
     }
 
-    /// A remote .srs rule-set, downloaded through the proxy (reliable in Iran).
-    private static func remoteRuleSet(_ tag: String, _ name: String) -> [String: Any] {
-        [
-            "type": "remote",
-            "tag": tag,
-            "format": "binary",
-            "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/\(name).srs",
-            "download_detour": proxyTag,
-        ]
+    /// A rule-set loaded from a .srs file bundled in the app (no network at
+    /// startup — avoids the "proxy not ready yet" failure). Returns nil if the
+    /// file isn't bundled, so routing gracefully falls back.
+    private static func localRuleSet(_ tag: String, _ filename: String) -> [String: Any]? {
+        guard let url = Bundle.main.url(forResource: filename, withExtension: "srs") else { return nil }
+        return ["type": "local", "tag": tag, "format": "binary", "path": url.path]
     }
 
     /// Builds a sing-box 1.12+ DNS server object from a "scheme://host" string.

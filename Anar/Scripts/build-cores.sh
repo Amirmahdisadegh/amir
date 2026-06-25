@@ -57,6 +57,12 @@ else
   echo "warning: could not clone StormDNS; skipping stormdns core (sing-box still works)."
 fi
 
+echo "==> Downloading Iran rule-sets (bundled offline so startup never blocks)..."
+RS_BASE="https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set"
+for f in geoip-ir geosite-ir geosite-category-ads-all; do
+  curl -sSL -o "$OUT_DIR/$f.srs" "$RS_BASE/$f.srs" && echo "    $f.srs" || echo "warning: failed to download $f.srs"
+done
+
 echo
 echo "==> Done. Cores in: $OUT_DIR"
 echo "Next:  cd \"$PROJECT_DIR\" && xcodegen generate && open Anar.xcodeproj"
