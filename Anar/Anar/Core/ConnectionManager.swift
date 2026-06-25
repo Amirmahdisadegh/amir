@@ -30,6 +30,8 @@ final class ConnectionManager: ObservableObject {
     @Published private(set) var latencyMs: Int? = nil
     @Published private(set) var activeName: String = ""
     @Published private(set) var trafficSamples: [TrafficSample] = []
+    @Published private(set) var connectedSince: Date? = nil
+    @Published private(set) var exitInfo: GeoInfo? = nil
     @Published var warning: String?
 
     let log: LogStore
@@ -65,6 +67,8 @@ final class ConnectionManager: ObservableObject {
         state = .error(recent.isEmpty ? "Core stopped unexpectedly (code \(status))" : recent)
         log.append("!!! sing-box exited (code \(status))")
         upSpeed = 0; downSpeed = 0
+        connectedSince = nil
+        exitInfo = nil
     }
 
     // MARK: - Public
@@ -121,6 +125,9 @@ final class ConnectionManager: ObservableObject {
         upSpeed = 0; downSpeed = 0; latencyMs = nil; activeName = ""
         lastTotals = nil
         trafficSamples = []
+        connectedSince = nil
+        exitInfo = nil
+        NotificationService.notify(title: "Anar disconnected", body: "Tunnel is off.")
     }
 
     func testLatency() {
@@ -150,9 +157,29 @@ final class ConnectionManager: ObservableObject {
         guard state == .connecting else { return }
         if settings.mode == .proxy { applySystemProxy() }
         state = .connected
+        connectedSince = Date()
         log.append(">>> Connected")
         startStats()
         testLatency()
+        fetchExitInfo()
+        NotificationService.notify(title: "Anar connected", body: activeName.isEmpty ? "Tunnel is up." : "Connected to \(activeName).")
+    }
+
+    private func fetchExitInfo() {
+        Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: 1_200_000_000) // let the tunnel settle
+            guard self.state.isConnected else { return }
+            if let info = await GeoService.lookup() {
+                guard self.state.isConnected else { return }
+                self.exitInfo = info
+                self.log.append(">>> Exit: \(info.country) (\(info.ip))")
+                if !info.country.isEmpty {
+                    NotificationService.notify(title: "\(flagEmoji(info.code)) \(info.country)",
+                                               body: "Your traffic now exits via \(info.country).")
+                }
+            }
+        }
     }
 
     private func markTimedOut() {

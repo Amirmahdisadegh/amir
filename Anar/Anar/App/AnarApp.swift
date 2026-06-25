@@ -42,6 +42,10 @@ struct AnarApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NotificationService.requestAuthorization()
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             NotificationCenter.default.post(name: .anarLinkOpened, object: url.absoluteString)

@@ -39,6 +39,17 @@ struct MenuBarView: View {
                 .tint(conn.state.isConnected ? .red : .accentColor)
 
                 if conn.state.isConnected {
+                    if let info = conn.exitInfo, !info.country.isEmpty {
+                        HStack(spacing: 6) {
+                            Text(flagEmoji(info.code))
+                            Text(info.country).fontWeight(.medium)
+                            Spacer()
+                            if let since = conn.connectedSince {
+                                Text(since, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            }
+                        }
+                        .font(.callout)
+                    }
                     HStack(spacing: 16) {
                         Label(formatBytes(conn.downSpeed, perSecond: true), systemImage: "arrow.down")
                             .foregroundStyle(.green)

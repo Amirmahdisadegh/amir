@@ -32,30 +32,56 @@ struct ProfileDetailView: View {
 
     private var hero: some View {
         VStack(spacing: 14) {
-            ZStack {
-                Circle().fill(ringColor.opacity(0.15)).frame(width: 128, height: 128)
-                Circle().strokeBorder(ringColor.opacity(0.5), lineWidth: 2).frame(width: 128, height: 128)
-                Image(systemName: conn.state.isConnected && isActiveProfile ? "bolt.horizontal.fill" : "bolt.horizontal")
-                    .font(.system(size: 44)).foregroundStyle(ringColor)
-            }
-            Text(profile.name.isEmpty ? profile.server : profile.name).font(.title2.bold())
-            Text(statusText).foregroundStyle(.secondary)
-
+            // Big tappable power button (ExpressVPN-style).
             Button {
+                guard profile.isValid else { return }
                 store.select(profile.id)
                 conn.toggle(profile, settings: store.settings)
             } label: {
-                HStack {
-                    if conn.state.isBusy && isActiveProfile { ProgressView().controlSize(.small) }
-                    Text(buttonTitle).frame(maxWidth: .infinity)
+                ZStack {
+                    Circle().fill(ringColor.opacity(0.12)).frame(width: 168, height: 168)
+                    Circle().strokeBorder(ringColor.opacity(0.55), lineWidth: 6).frame(width: 168, height: 168)
+                    if conn.state.isBusy && isActiveProfile {
+                        ProgressView().controlSize(.large)
+                    } else {
+                        Image(systemName: "power")
+                            .font(.system(size: 58, weight: .semibold))
+                            .foregroundStyle(ringColor)
+                    }
                 }
-                .frame(height: 22)
             }
-            .controlSize(.large)
-            .buttonStyle(.borderedProminent)
-            .tint(conn.state.isConnected && isActiveProfile ? .red : .accentColor)
-            .frame(maxWidth: 260)
+            .buttonStyle(.plain)
             .disabled(!profile.isValid)
+
+            Text(heroStatusText.uppercased())
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(ringColor)
+                .tracking(1.5)
+
+            // Connected location (flag + country + IP) and live timer.
+            if conn.state.isConnected && isActiveProfile {
+                if let info = conn.exitInfo, !info.country.isEmpty {
+                    HStack(spacing: 8) {
+                        Text(flagEmoji(info.code)).font(.system(size: 30))
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(info.country).font(.title3.bold())
+                            Text(info.ip).font(.caption.monospaced()).foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("Locating exit…").foregroundStyle(.secondary)
+                    }
+                }
+                if let since = conn.connectedSince {
+                    Text(since, style: .timer)
+                        .font(.title2.monospacedDigit().weight(.medium))
+                }
+            } else {
+                Text(profile.name.isEmpty ? profile.server : profile.name).font(.title2.bold())
+                Text(profile.subtitle).font(.callout).foregroundStyle(.secondary)
+            }
 
             if !profile.isValid {
                 Text("This profile is missing required fields.").font(.caption).foregroundStyle(.red)
@@ -140,6 +166,16 @@ struct ProfileDetailView: View {
         }
         .font(.callout)
         .padding(.vertical, 7)
+    }
+
+    private var heroStatusText: String {
+        guard isActiveProfile else { return "Disconnected" }
+        switch conn.state {
+        case .connected: return "Connected"
+        case .connecting: return "Connecting"
+        case .error: return "Error"
+        case .disconnected: return "Disconnected"
+        }
     }
 
     private var ringColor: Color {
