@@ -18,7 +18,7 @@ struct SettingsView: View {
             Divider()
 
             Form {
-                Section("Routing") {
+                Section("Connection") {
                     Picker("Mode", selection: s.mode) {
                         ForEach(RoutingMode.allCases, id: \.self) { Text($0.display).tag($0) }
                     }
@@ -26,7 +26,19 @@ struct SettingsView: View {
                          ? "TUN routes ALL system traffic through the tunnel (asks for your password to start)."
                          : "System Proxy routes browser/app traffic via a local SOCKS/HTTP proxy (no password needed).")
                         .font(.caption).foregroundStyle(.secondary)
-                    Toggle("Bypass private / LAN addresses", isOn: s.bypassPrivate)
+                }
+
+                Section("Smart Routing") {
+                    Picker("Rule", selection: s.routingRule) {
+                        ForEach(RoutingRule.allCases, id: \.self) { Text($0.display).tag($0) }
+                    }
+                    Text(store.settings.routingRule == .bypassIran
+                         ? "Iranian sites & IPs connect directly (fast), everything else via the tunnel. Uses auto-updating rule-sets."
+                         : store.settings.routingRule == .global
+                         ? "Every connection goes through the tunnel."
+                         : "Only local network addresses go direct.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Toggle("Block ads & trackers", isOn: s.adBlock)
                 }
 
                 Section("Ports") {

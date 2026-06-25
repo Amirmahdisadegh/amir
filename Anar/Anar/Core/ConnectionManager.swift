@@ -11,6 +11,14 @@ enum ConnectionState: Equatable {
     var isBusy: Bool { self == .connecting }
 }
 
+/// One per-second traffic data point for the live chart.
+struct TrafficSample: Identifiable {
+    let id = UUID()
+    let date: Date
+    let up: Int
+    let down: Int
+}
+
 @MainActor
 final class ConnectionManager: ObservableObject {
 
@@ -21,6 +29,7 @@ final class ConnectionManager: ObservableObject {
     @Published private(set) var downTotal: Int = 0
     @Published private(set) var latencyMs: Int? = nil
     @Published private(set) var activeName: String = ""
+    @Published private(set) var trafficSamples: [TrafficSample] = []
     @Published var warning: String?
 
     let log: LogStore
@@ -111,6 +120,7 @@ final class ConnectionManager: ObservableObject {
         state = .disconnected
         upSpeed = 0; downSpeed = 0; latencyMs = nil; activeName = ""
         lastTotals = nil
+        trafficSamples = []
     }
 
     func testLatency() {
@@ -165,6 +175,8 @@ final class ConnectionManager: ObservableObject {
                     self.upTotal = t.up
                     self.downTotal = t.down
                     self.lastTotals = t
+                    self.trafficSamples.append(TrafficSample(date: Date(), up: self.upSpeed, down: self.downSpeed))
+                    if self.trafficSamples.count > 60 { self.trafficSamples.removeFirst(self.trafficSamples.count - 60) }
                 }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }

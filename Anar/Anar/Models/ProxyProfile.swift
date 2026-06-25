@@ -66,6 +66,10 @@ struct ProxyProfile: Identifiable, Codable, Equatable {
     var congestionControl: String = "" // tuic: bbr / cubic
     var udpRelayMode: String = ""       // tuic: native / quic
 
+    // Metadata
+    var subscriptionId: String? = nil   // owning subscription, if any
+    var latencyMs: Int? = nil           // last measured TCP latency
+
     var subtitle: String {
         "\(type.display) · \(server):\(port)"
     }

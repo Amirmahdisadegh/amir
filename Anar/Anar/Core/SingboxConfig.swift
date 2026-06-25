@@ -54,15 +54,29 @@ enum SingboxConfig {
             ["action": "sniff"],
             ["protocol": "dns", "action": "hijack-dns"],
         ]
-        if settings.bypassPrivate {
+        var ruleSets: [[String: Any]] = []
+
+        if settings.routingRule != .global {
             rules.append(["ip_is_private": true, "outbound": "direct"])
         }
-        root["route"] = [
+        if settings.adBlock {
+            ruleSets.append(remoteRuleSet("geosite-ads", "geosite-category-ads-all"))
+            rules.append(["rule_set": ["geosite-ads"], "action": "reject"])
+        }
+        if settings.routingRule == .bypassIran {
+            ruleSets.append(remoteRuleSet("geoip-ir", "geoip-ir"))
+            ruleSets.append(remoteRuleSet("geosite-ir", "geosite-ir"))
+            rules.append(["rule_set": ["geoip-ir", "geosite-ir"], "outbound": "direct"])
+        }
+
+        var route: [String: Any] = [
             "rules": rules,
             "final": proxyTag,
             "auto_detect_interface": true,
             "default_domain_resolver": "local",
         ]
+        if !ruleSets.isEmpty { route["rule_set"] = ruleSets }
+        root["route"] = route
 
         // Live stats API
         root["experimental"] = [
@@ -72,6 +86,17 @@ enum SingboxConfig {
         ]
 
         return try JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    /// A remote .srs rule-set, downloaded through the proxy (reliable in Iran).
+    private static func remoteRuleSet(_ tag: String, _ name: String) -> [String: Any] {
+        [
+            "type": "remote",
+            "tag": tag,
+            "format": "binary",
+            "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/\(name).srs",
+            "download_detour": proxyTag,
+        ]
     }
 
     /// Builds a sing-box 1.12+ DNS server object from a "scheme://host" string.

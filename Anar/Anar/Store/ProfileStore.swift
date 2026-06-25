@@ -54,6 +54,47 @@ final class ProfileStore: ObservableObject {
         if data.selectedId == id { data.selectedId = data.profiles.first?.id }
     }
 
+    func setLatency(_ id: String, _ ms: Int?) {
+        guard let i = data.profiles.firstIndex(where: { $0.id == id }) else { return }
+        data.profiles[i].latencyMs = ms
+    }
+
+    // MARK: - Subscriptions
+
+    func addSubscription(_ sub: Subscription) {
+        data.subscriptions.append(sub)
+    }
+
+    func deleteSubscription(_ id: String) {
+        data.subscriptions.removeAll { $0.id == id }
+        data.profiles.removeAll { $0.subscriptionId == id }
+    }
+
+    /// Fetches a subscription URL and replaces that subscription's servers.
+    func refreshSubscription(_ id: String) async {
+        guard let i = data.subscriptions.firstIndex(where: { $0.id == id }),
+              let url = URL(string: data.subscriptions[i].url) else { return }
+        guard let (raw, _) = try? await URLSession.shared.data(from: url),
+              let body = String(data: raw, encoding: .utf8) else { return }
+        var parsed = LinkParser.parseMany(body)
+        for k in parsed.indices { parsed[k].subscriptionId = id }
+        guard !parsed.isEmpty else { return }
+        data.profiles.removeAll { $0.subscriptionId == id }
+        data.profiles.append(contentsOf: parsed)
+        data.subscriptions[i].lastUpdated = Date()
+        if data.selectedId == nil { data.selectedId = data.profiles.first?.id }
+    }
+
+    /// TCP-pings every server concurrently and stores the results.
+    func testAllLatencies() async {
+        await withTaskGroup(of: (String, Int?).self) { group in
+            for p in data.profiles {
+                group.addTask { (p.id, await LatencyTester.ping(host: p.server, port: p.port)) }
+            }
+            for await (id, ms) in group { setLatency(id, ms) }
+        }
+    }
+
     private func scheduleSave() {
         saveItem?.cancel()
         let snapshot = data

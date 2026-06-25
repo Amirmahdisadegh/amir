@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct ProfileDetailView: View {
     let profile: ProxyProfile
@@ -11,7 +12,10 @@ struct ProfileDetailView: View {
         ScrollView {
             VStack(spacing: 22) {
                 hero
-                if conn.state.isConnected && isActiveProfile { liveStats }
+                if conn.state.isConnected && isActiveProfile {
+                    liveStats
+                    trafficChart
+                }
                 infoCard
                 if let warning = conn.warning {
                     Label(warning, systemImage: "exclamationmark.triangle.fill")
@@ -72,6 +76,32 @@ struct ProfileDetailView: View {
             .padding(.vertical, 12)
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
         }
+    }
+
+    private var trafficChart: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Live traffic").font(.caption).foregroundStyle(.secondary)
+            Chart(conn.trafficSamples) { sample in
+                AreaMark(x: .value("t", sample.date), y: .value("down", sample.down), series: .value("s", "Download"))
+                    .foregroundStyle(.green.opacity(0.25))
+                LineMark(x: .value("t", sample.date), y: .value("down", sample.down), series: .value("s", "Download"))
+                    .foregroundStyle(.green)
+                LineMark(x: .value("t", sample.date), y: .value("up", sample.up), series: .value("s", "Upload"))
+                    .foregroundStyle(.blue)
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis {
+                AxisMarks { value in
+                    AxisValueLabel {
+                        if let v = value.as(Int.self) { Text(formatBytes(v, perSecond: true)).font(.caption2) }
+                    }
+                }
+            }
+            .frame(height: 120)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(14)
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func statCard(_ title: String, _ rate: String, _ total: String, _ icon: String, _ color: Color) -> some View {

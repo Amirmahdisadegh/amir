@@ -7,12 +7,16 @@ struct MainWindow: View {
     @State private var showAdd = false
     @State private var showSettings = false
     @State private var showLogs = false
+    @State private var showSubs = false
+    @State private var testing = false
+    @State private var searchText = ""
     @State private var alert: AlertItem?
 
     var body: some View {
         NavigationSplitView {
             sidebar
-                .navigationSplitViewColumnWidth(min: 220, ideal: 250)
+                .navigationSplitViewColumnWidth(min: 240, ideal: 270)
+                .searchable(text: $searchText, placement: .sidebar, prompt: "Search servers")
         } detail: {
             if let profile = store.selected {
                 ProfileDetailView(profile: profile)
@@ -27,6 +31,12 @@ struct MainWindow: View {
         }
         .toolbar {
             ToolbarItemGroup {
+                Button { testAll() } label: {
+                    if testing { ProgressView().controlSize(.small) }
+                    else { Label("Test All", systemImage: "speedometer") }
+                }
+                .disabled(testing || store.data.profiles.isEmpty)
+                Button { showSubs = true } label: { Label("Subscriptions", systemImage: "arrow.triangle.2.circlepath") }
                 Button { showAdd = true } label: { Label("Add", systemImage: "plus") }
                 Button { showLogs = true } label: { Label("Logs", systemImage: "text.alignleft") }
                 Button { showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
@@ -35,16 +45,35 @@ struct MainWindow: View {
         .sheet(isPresented: $showAdd) { AddProfileSheet { handleImport($0) } }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showLogs) { LogsView() }
+        .sheet(isPresented: $showSubs) { SubscriptionsSheet() }
         .alert(item: $alert) { Alert(title: Text($0.title), message: Text($0.message), dismissButton: .default(Text("OK"))) }
         .onReceive(NotificationCenter.default.publisher(for: .anarLinkOpened)) { note in
             if let link = note.object as? String { handleImport(link) }
         }
     }
 
+    private var visibleProfiles: [ProxyProfile] {
+        var list = store.data.profiles
+        if !searchText.isEmpty {
+            list = list.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.server.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        return list.sorted { a, b in
+            switch (a.latencyMs, b.latencyMs) {
+            case let (x?, y?): return x < y
+            case (_?, nil): return true
+            case (nil, _?): return false
+            default: return false
+            }
+        }
+    }
+
     private var sidebar: some View {
         List(selection: selectionBinding) {
-            Section("Servers") {
-                ForEach(store.data.profiles) { profile in
+            Section("Servers · \(store.data.profiles.count)") {
+                ForEach(visibleProfiles) { profile in
                     ProfileRow(profile: profile, isActive: conn.state.isConnected && conn.activeName == profile.name)
                         .tag(profile.id)
                         .contextMenu {
@@ -68,8 +97,12 @@ struct MainWindow: View {
         Binding(get: { store.selected?.id }, set: { if let id = $0 { store.select(id) } })
     }
 
+    private func testAll() {
+        testing = true
+        Task { await store.testAllLatencies(); testing = false }
+    }
+
     private func handleImport(_ raw: String) {
-        // Try a single link first, then subscription/multi.
         if let one = try? LinkParser.parse(raw) {
             store.upsert(one)
             store.select(one.id)
@@ -101,9 +134,19 @@ struct ProfileRow: View {
                 Text(profile.subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
-            if isActive { Circle().fill(.green).frame(width: 8, height: 8) }
+            if isActive {
+                Circle().fill(.green).frame(width: 8, height: 8)
+            } else if let ms = profile.latencyMs {
+                Text("\(ms)ms").font(.caption2.monospacedDigit()).foregroundStyle(latencyColor(ms))
+            }
         }
         .padding(.vertical, 2)
+    }
+
+    private func latencyColor(_ ms: Int) -> Color {
+        if ms < 150 { return .green }
+        if ms < 400 { return .orange }
+        return .red
     }
 
     private var badgeColor: Color {
