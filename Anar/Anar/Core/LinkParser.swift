@@ -39,6 +39,33 @@ enum LinkParser {
         }
     }
 
+    /// Parses a WireGuard .conf file ([Interface]/[Peer]) into a profile.
+    static func parseWireGuardConf(_ text: String) -> ProxyProfile? {
+        var p = ProxyProfile(type: .wireguard)
+        var section = ""
+        for raw in text.split(whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty || line.hasPrefix("#") { continue }
+            if line.hasPrefix("[") { section = line.lowercased(); continue }
+            guard let eq = line.firstIndex(of: "=") else { continue }
+            let key = line[..<eq].trimmingCharacters(in: .whitespaces).lowercased()
+            let val = String(line[line.index(after: eq)...]).trimmingCharacters(in: .whitespaces)
+            switch (section, key) {
+            case ("[interface]", "privatekey"): p.privateKey = val
+            case ("[interface]", "address"):
+                p.localAddresses = val.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            case ("[peer]", "publickey"): p.peerPublicKey = val
+            case ("[peer]", "presharedkey"): p.preSharedKey = val
+            case ("[peer]", "endpoint"):
+                if let hp = splitHostPort(val) { p.server = hp.0; p.port = hp.1 }
+            default: break
+            }
+        }
+        guard !p.privateKey.isEmpty, !p.peerPublicKey.isEmpty, !p.server.isEmpty else { return nil }
+        p.name = "WireGuard \(p.server)"
+        return p
+    }
+
     /// Parses many links from subscription content: raw newline list or a single
     /// base64 blob containing newline-separated links. Skips lines it can't parse.
     static func parseMany(_ content: String) -> [ProxyProfile] {

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct MainWindow: View {
     @EnvironmentObject var store: ProfileStore
@@ -11,6 +12,13 @@ struct MainWindow: View {
     @State private var testing = false
     @State private var searchText = ""
     @State private var alert: AlertItem?
+    @State private var editing: EditTarget?
+
+    struct EditTarget: Identifiable {
+        let id = UUID()
+        var profile: ProxyProfile
+        var isNew: Bool
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -37,7 +45,11 @@ struct MainWindow: View {
                 }
                 .disabled(testing || store.data.profiles.isEmpty)
                 Button { showSubs = true } label: { Label("Subscriptions", systemImage: "arrow.triangle.2.circlepath") }
-                Button { showAdd = true } label: { Label("Add", systemImage: "plus") }
+                Menu {
+                    Button("Paste link / subscription…") { showAdd = true }
+                    Button("Create manually…") { editing = EditTarget(profile: ProxyProfile(), isNew: true) }
+                    Button("Import from file…") { importFromFile() }
+                } label: { Label("Add", systemImage: "plus") }
                 Button { showLogs = true } label: { Label("Logs", systemImage: "text.alignleft") }
                 Button { showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
             }
@@ -46,6 +58,14 @@ struct MainWindow: View {
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showLogs) { LogsView() }
         .sheet(isPresented: $showSubs) { SubscriptionsSheet() }
+        .sheet(item: $editing) { target in
+            ServerEditorView(
+                profile: target.profile,
+                isNew: target.isNew,
+                onSave: { store.upsert($0); store.select($0.id) },
+                onDelete: target.isNew ? nil : { store.delete(target.profile.id) }
+            )
+        }
         .alert(item: $alert) { Alert(title: Text($0.title), message: Text($0.message), dismissButton: .default(Text("OK"))) }
         .onReceive(NotificationCenter.default.publisher(for: .anarLinkOpened)) { note in
             if let link = note.object as? String { handleImport(link) }
@@ -78,6 +98,7 @@ struct MainWindow: View {
                     ProfileRow(profile: profile, isActive: conn.state.isConnected && conn.activeName == profile.name)
                         .tag(profile.id)
                         .contextMenu {
+                            Button("Edit…") { editing = EditTarget(profile: profile, isNew: false) }
                             Button("Delete", role: .destructive) { store.delete(profile.id) }
                         }
                 }
@@ -101,6 +122,22 @@ struct MainWindow: View {
     private func testAll() {
         testing = true
         Task { await store.testAllLatencies(); testing = false }
+    }
+
+    private func importFromFile() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        guard panel.runModal() == .OK, let url = panel.url,
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return }
+        if text.localizedCaseInsensitiveContains("[Interface]"),
+           let wg = LinkParser.parseWireGuardConf(text) {
+            store.upsert(wg); store.select(wg.id)
+            alert = AlertItem(title: "Imported", message: "Added WireGuard “\(wg.name)”.")
+        } else {
+            handleImport(text)
+        }
     }
 
     private func handleImport(_ raw: String) {
