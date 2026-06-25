@@ -39,9 +39,25 @@ final class CoreProcess {
     private var tailTimer: DispatchSourceTimer?
     private var tailOffset: UInt64 = 0
     private var isDaemon = false
+    private var isHelper = false
 
     static func locateBinary(name: String) -> URL? {
         Bundle.main.url(forResource: name, withExtension: nil)
+    }
+
+    /// TUN via the persistent root helper. Installs it once (one admin prompt),
+    /// then toggles the tunnel with no further prompts.
+    func startHelper(bundledCore: URL, config: String, workDir: URL) throws {
+        try prepareBinary(bundledCore)
+        if !HelperManager.isInstalled {
+            try HelperManager.install(bundledCore: bundledCore, workDir: workDir)
+        }
+        let logFile = URL(fileURLWithPath: HelperManager.logPath)
+        try? "".write(to: logFile, atomically: true, encoding: .utf8)
+        HelperManager.setRunning(true, config: config)
+        isHelper = true
+        tailOffset = 0
+        startTailing(logFile)
     }
 
     // MARK: - Config validation (fail fast with the real error)
@@ -147,6 +163,12 @@ final class CoreProcess {
         stdoutPipe = nil
 
         tailTimer?.cancel(); tailTimer = nil
+
+        // Persistent helper: just flip the control file off (no password).
+        if isHelper {
+            isHelper = false
+            HelperManager.setRunning(false, config: nil)
+        }
 
         if isDaemon {
             isDaemon = false

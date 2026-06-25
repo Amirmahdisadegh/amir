@@ -22,6 +22,11 @@ final class ProfileStore: ObservableObject {
             data = AnarData()
         }
         if data.selectedId == nil { data.selectedId = data.profiles.first?.id }
+        // Migrate older stores to the no-password TUN mode.
+        if data.schemaVersion < 1 {
+            data.settings.mode = .tun
+            data.schemaVersion = 1
+        }
     }
 
     var selected: ProxyProfile? {

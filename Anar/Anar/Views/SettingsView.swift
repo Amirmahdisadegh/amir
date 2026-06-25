@@ -23,8 +23,8 @@ struct SettingsView: View {
                         ForEach(RoutingMode.allCases, id: \.self) { Text($0.display).tag($0) }
                     }
                     Text(store.settings.mode == .tun
-                         ? "TUN routes ALL system traffic through the tunnel (asks for your password to start)."
-                         : "System Proxy routes browser/app traffic via a local SOCKS/HTTP proxy (no password needed).")
+                         ? "Full VPN for all traffic. Installs a small helper the first time (one password) — after that, connect/disconnect needs NO password."
+                         : "Routes browser/app traffic via a local SOCKS/HTTP proxy. Asks for your password on every connect/disconnect.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 

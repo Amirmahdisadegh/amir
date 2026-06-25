@@ -111,12 +111,26 @@ struct ProfileDetailView: View {
             let coord = CLLocationCoordinate2D(latitude: info.lat, longitude: info.lon)
             Map(position: .constant(.region(MKCoordinateRegion(
                 center: coord,
-                span: MKCoordinateSpan(latitudeDelta: 30, longitudeDelta: 30))))) {
-                Marker(info.country, coordinate: coord)
-                    .tint(.red)
+                span: MKCoordinateSpan(latitudeDelta: 35, longitudeDelta: 35))))) {
+                Annotation(info.country, coordinate: coord) {
+                    ZStack {
+                        Circle().fill(.red.opacity(0.25)).frame(width: 46, height: 46)
+                        Circle().fill(.red).frame(width: 16, height: 16)
+                            .overlay(Circle().stroke(.white, lineWidth: 3))
+                    }
+                }
             }
-            .frame(height: 190)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .frame(height: 280)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(alignment: .topLeading) {
+                HStack(spacing: 6) {
+                    Text(flagEmoji(info.code)).font(.title3)
+                    Text(info.country).fontWeight(.semibold)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(10)
+            }
             .allowsHitTesting(false)
         }
     }
