@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import MapKit
 
 struct ProfileDetailView: View {
     let profile: ProxyProfile
@@ -13,6 +14,7 @@ struct ProfileDetailView: View {
             VStack(spacing: 22) {
                 hero
                 if conn.state.isConnected && isActiveProfile {
+                    exitMap
                     liveStats
                     trafficChart
                 }
@@ -101,6 +103,21 @@ struct ProfileDetailView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    @ViewBuilder private var exitMap: some View {
+        if let info = conn.exitInfo, info.lat != 0 || info.lon != 0 {
+            let coord = CLLocationCoordinate2D(latitude: info.lat, longitude: info.lon)
+            Map(position: .constant(.region(MKCoordinateRegion(
+                center: coord,
+                span: MKCoordinateSpan(latitudeDelta: 30, longitudeDelta: 30))))) {
+                Marker(info.country, coordinate: coord)
+                    .tint(.red)
+            }
+            .frame(height: 190)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .allowsHitTesting(false)
         }
     }
 

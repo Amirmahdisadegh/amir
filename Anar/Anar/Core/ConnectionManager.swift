@@ -166,19 +166,25 @@ final class ConnectionManager: ObservableObject {
     }
 
     private func fetchExitInfo() {
+        let proxyPort: Int? = settings.mode == .proxy ? settings.mixedPort : nil
         Task { [weak self] in
             guard let self else { return }
-            try? await Task.sleep(nanoseconds: 1_200_000_000) // let the tunnel settle
-            guard self.state.isConnected else { return }
-            if let info = await GeoService.lookup() {
+            // Retry a few times while the tunnel settles / rule-sets download.
+            for attempt in 0..<5 {
+                try? await Task.sleep(nanoseconds: attempt == 0 ? 1_200_000_000 : 2_000_000_000)
                 guard self.state.isConnected else { return }
-                self.exitInfo = info
-                self.log.append(">>> Exit: \(info.country) (\(info.ip))")
-                if !info.country.isEmpty {
-                    NotificationService.notify(title: "\(flagEmoji(info.code)) \(info.country)",
-                                               body: "Your traffic now exits via \(info.country).")
+                if let info = await GeoService.lookup(httpProxyPort: proxyPort) {
+                    guard self.state.isConnected else { return }
+                    self.exitInfo = info
+                    self.log.append(">>> Exit: \(info.country) (\(info.ip))")
+                    if !info.country.isEmpty {
+                        NotificationService.notify(title: "\(flagEmoji(info.code)) \(info.country)",
+                                                   body: "Your traffic now exits via \(info.country).")
+                    }
+                    return
                 }
             }
+            self.log.append("!!! Could not determine exit location")
         }
     }
 

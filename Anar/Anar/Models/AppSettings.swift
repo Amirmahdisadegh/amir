@@ -36,6 +36,7 @@ struct AppSettings: Codable, Equatable {
     var logLevel: String = "info"
     var dnsServer: String = "tls://8.8.8.8"
     var autoConnectOnLaunch: Bool = false
+    var accentColorName: String = "blue"
 
     static let logLevels = ["trace", "debug", "info", "warn", "error"]
 }

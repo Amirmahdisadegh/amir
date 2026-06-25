@@ -9,7 +9,7 @@ struct MenuBarView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Anar").font(.headline)
+                Text("Amir V2ray").font(.headline)
                 Spacer()
                 StatusDot(state: conn.state)
             }
@@ -62,7 +62,7 @@ struct MenuBarView: View {
 
             Divider()
             HStack {
-                Button("Open Anar…") { openWindow(id: "main") }
+                Button("Open Amir V2ray…") { openWindow(id: "main") }
                 Spacer()
                 Button("Quit") { NSApplication.shared.terminate(nil) }.foregroundStyle(.secondary)
             }
@@ -70,6 +70,7 @@ struct MenuBarView: View {
         }
         .padding(14)
         .frame(width: 290)
+        .tint(AppTheme.color(for: store.settings.accentColorName))
     }
 
     private var selectionBinding: Binding<String?> {

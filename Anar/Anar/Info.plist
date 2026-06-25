@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>Anar</string>
+	<string>Amir V2ray</string>
 	<key>CFBundleDisplayName</key>
-	<string>Anar</string>
+	<string>Amir V2ray</string>
 	<key>CFBundleIdentifier</key>
 	<string>app.anar.mac</string>
 	<key>CFBundleShortVersionString</key>

@@ -25,7 +25,7 @@ struct AnarApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Anar", id: "main") {
+        Window("Amir V2ray", id: "main") {
             MainWindow()
                 .environmentObject(store)
                 .environmentObject(conn)

@@ -54,6 +54,18 @@ struct SettingsView: View {
                     TextField("DNS server", text: s.dnsServer, prompt: Text("tls://8.8.8.8"))
                 }
 
+                Section("Appearance") {
+                    HStack(spacing: 12) {
+                        ForEach(AppTheme.allCases) { theme in
+                            Circle().fill(theme.color).frame(width: 26, height: 26)
+                                .overlay(Circle().strokeBorder(.primary.opacity(
+                                    store.settings.accentColorName == theme.rawValue ? 0.9 : 0), lineWidth: 2))
+                                .onTapGesture { store.data.settings.accentColorName = theme.rawValue }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
                 Section("General") {
                     Picker("Log level", selection: s.logLevel) {
                         ForEach(AppSettings.logLevels, id: \.self) { Text($0).tag($0) }

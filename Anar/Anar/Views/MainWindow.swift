@@ -50,6 +50,7 @@ struct MainWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: .anarLinkOpened)) { note in
             if let link = note.object as? String { handleImport(link) }
         }
+        .tint(AppTheme.color(for: store.settings.accentColorName))
     }
 
     private var visibleProfiles: [ProxyProfile] {
