@@ -188,12 +188,14 @@ enum SingboxConfig {
             "port": p.port,
             "public_key": p.peerPublicKey,
             "allowed_ips": ["0.0.0.0/0", "::/0"],
+            "persistent_keepalive_interval": 25,
         ]
         if !p.preSharedKey.isEmpty { peer["pre_shared_key"] = p.preSharedKey }
         if !p.reserved.isEmpty { peer["reserved"] = p.reserved }
         return [
             "type": "wireguard",
             "tag": proxyTag,
+            "mtu": 1408,
             "address": p.localAddresses.isEmpty ? ["172.16.0.2/32"] : p.localAddresses,
             "private_key": p.privateKey,
             "peers": [peer],
