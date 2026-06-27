@@ -1,0 +1,41 @@
+name: Anar
+options:
+  bundleIdPrefix: app.anar
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+targets:
+  Anar:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Anar
+        excludes:
+          - "**/.DS_Store"
+          - "Info.plist"
+          - "Resources/**"
+      - path: Anar/Resources
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.anar.mac
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Anar/Info.plist
+        PRODUCT_NAME: "Amir V2ray"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_EMIT_LOC_STRINGS: YES
+        ENABLE_PREVIEWS: YES
+        ENABLE_HARDENED_RUNTIME: NO
+    info:
+      path: Anar/Info.plist

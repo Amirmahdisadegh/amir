@@ -1,0 +1,14 @@
+# Android / Gradle
+*.iml
+.gradle/
+/local.properties
+.idea/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# The libbox core is built locally by Scripts/build-libbox.sh
+app/libs/libbox.aar
+
+.DS_Store

@@ -1,0 +1,43 @@
+name: WhiteDNS
+options:
+  bundleIdPrefix: shop.whitedns
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+targets:
+  WhiteDNS:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: WhiteDNS
+        excludes:
+          - "**/.DS_Store"
+          - "Info.plist"
+          - "Resources/**"
+      # Resources (the stormdns core binary) are copied as bundle resources.
+      # Run Scripts/build-core.sh BEFORE `xcodegen generate` so the binary exists.
+      - path: WhiteDNS/Resources
+        buildPhase: resources
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: shop.whitedns.mac
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: WhiteDNS/Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_EMIT_LOC_STRINGS: YES
+        ENABLE_PREVIEWS: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        # No App Sandbox: the app spawns the stormdns subprocess and edits the
+        # system SOCKS proxy, neither of which is allowed inside the sandbox.
+    info:
+      path: WhiteDNS/Info.plist
