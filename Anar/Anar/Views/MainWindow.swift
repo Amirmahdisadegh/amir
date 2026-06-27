@@ -46,9 +46,11 @@ struct MainWindow: View {
                 .disabled(testing || store.data.profiles.isEmpty)
                 Button { showSubs = true } label: { Label("Subscriptions", systemImage: "arrow.triangle.2.circlepath") }
                 Menu {
-                    Button("Paste link / subscription…") { showAdd = true }
+                    Button("Paste link…") { showAdd = true }
                     Button("Create manually…") { editing = EditTarget(profile: ProxyProfile(), isNew: true) }
                     Button("Import from file…") { importFromFile() }
+                    Divider()
+                    Button("Add subscription…") { showSubs = true }
                 } label: { Label("Add", systemImage: "plus") }
                 Button { showLogs = true } label: { Label("Logs", systemImage: "text.alignleft") }
                 Button { showSettings = true } label: { Label("Settings", systemImage: "gearshape") }

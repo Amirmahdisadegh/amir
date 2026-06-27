@@ -21,7 +21,7 @@ struct AnarApp: App {
                 .environmentObject(store)
                 .environmentObject(conn)
         } label: {
-            Image(systemName: conn.state.isConnected ? "bolt.horizontal.circle.fill" : "bolt.horizontal.circle")
+            Image(systemName: conn.state.isConnected ? "bolt.fill" : "bolt.slash.fill")
         }
         .menuBarExtraStyle(.window)
 
@@ -46,6 +46,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationService.requestAuthorization()
     }
 
+    // Keep running in the menu bar after the window is closed.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    // Clicking the Dock icon (or reopening) brings up the main window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        if !flag { NotificationCenter.default.post(name: .openMainWindow, object: nil) }
+        return true
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             NotificationCenter.default.post(name: .anarLinkOpened, object: url.absoluteString)
@@ -55,4 +65,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension Notification.Name {
     static let anarLinkOpened = Notification.Name("anarLinkOpened")
+    static let openMainWindow = Notification.Name("openMainWindow")
 }
