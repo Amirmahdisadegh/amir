@@ -9,7 +9,8 @@ import html
 import logging
 import time
 
-from .config import TelegramCfg
+from .config import RiskCfg, TelegramCfg
+from .risk import estimate_trade
 from .signals import SetupType, Side, Signal
 
 log = logging.getLogger("okx_scanner.notifier")
@@ -22,28 +23,59 @@ except ImportError:  # pragma: no cover
     _HAS_AIOGRAM = False
 
 
-def format_signal(sig: Signal) -> str:
-    arrow = "🟢 LONG" if sig.side is Side.LONG else "🔴 SHORT"
-    setup_name = "FTR (Failure To Return)" if sig.setup is SetupType.FTR else "Flag Limit"
-    notes = f"\n📝 {', '.join(sig.notes)}" if sig.notes else ""
-    return (
-        f"⚡️ <b>RTM Setup</b> — {arrow}\n"
-        f"<b>{html.escape(sig.symbol)}</b>  ·  {sig.timeframe}\n"
-        f"Setup: <b>{setup_name}</b>\n"
+def quality_label(score: float) -> str:
+    """Plain-language quality tag for a signal score."""
+    if score >= 75:
+        return "عالی ✅"
+    if score >= 65:
+        return "خوب ✅"
+    if score >= 50:
+        return "متوسط ⚠️"
+    return "ضعیف ❌"
+
+
+def _fmt_money(x: float) -> str:
+    return f"{x:,.2f}"
+
+
+def format_signal(sig: Signal, risk: RiskCfg | None = None) -> str:
+    direction = "🟢 خرید (LONG)" if sig.side is Side.LONG else "🔴 فروش (SHORT)"
+    setup_name = "FTR" if sig.setup is SetupType.FTR else "Flag Limit"
+    vol_note = "  ·  📊 تأیید حجم" if "volume-confirmed" in sig.notes else ""
+
+    msg = (
+        f"⚡️ <b>سیگنال جدید</b> — {direction}\n"
+        f"<b>{html.escape(sig.symbol)}</b>  ·  تایم {sig.timeframe}  ·  {setup_name}\n"
+        f"کیفیت: <b>{quality_label(sig.score)}</b> ({sig.score:.0f}/100){vol_note}\n"
         f"───────────────\n"
-        f"Entry: <code>{sig.entry:g}</code>\n"
-        f"Stop:  <code>{sig.stop_loss:g}</code>\n"
-        f"TP:    <code>{sig.take_profit:g}</code>\n"
-        f"R:R:   <b>{sig.risk_reward:.2f}</b>   ·   Score: {sig.score:.0f}/100\n"
-        f"ATR:   {sig.atr:g}   ·   Price: {sig.price:g}"
-        f"{notes}\n"
-        f"<i>Mode 1 — manual execution. Verify before trading.</i>"
+        f"قیمت الان: <code>{sig.price:g}</code>\n"
+        f"💰 بخر نزدیک: <code>{sig.entry:g}</code>\n"
+        f"🛑 حد ضرر: <code>{sig.stop_loss:g}</code>\n"
+        f"🎯 هدف سود: <code>{sig.take_profit:g}</code>\n"
+        f"نسبت سود به ضرر: <b>{sig.risk_reward:.1f} برابر</b>"
     )
+
+    if risk is not None:
+        est = estimate_trade(sig, risk.account_equity_usdt, risk.risk_per_trade_pct)
+        if est:
+            coin = html.escape(sig.symbol.split("/")[0])
+            msg += (
+                f"\n───────────────\n"
+                f"📊 <b>پیشنهاد</b> (سرمایه {_fmt_money(risk.account_equity_usdt)}$ "
+                f"· ریسک {risk.risk_per_trade_pct:g}٪):\n"
+                f"• حجم خرید: ~{est['size']:,.4g} {coin}  (~{_fmt_money(est['notional'])}$)\n"
+                f"• اگر ضرر خورد: حدود <b>-{_fmt_money(est['risk_amount'])}$</b>\n"
+                f"• اگر به هدف رسید: حدود <b>+{_fmt_money(est['profit_amount'])}$</b>"
+            )
+
+    msg += "\n<i>Mode 1 — دستی معامله کن و خودت هم بررسی کن.</i>"
+    return msg
 
 
 class TelegramNotifier:
-    def __init__(self, cfg: TelegramCfg):
+    def __init__(self, cfg: TelegramCfg, risk: RiskCfg | None = None):
         self.cfg = cfg
+        self.risk = risk           # used to add the plain-money trade preview
         self._last_sent: dict[str, float] = {}
         self._bot = None
         self.active = False
@@ -73,7 +105,7 @@ class TelegramNotifier:
     async def send_signal(self, sig: Signal) -> None:
         if self._on_cooldown(sig):
             return
-        text = format_signal(sig)
+        text = format_signal(sig, self.risk)
         if not self.active or self._bot is None:
             log.info("[ALERT]\n%s", text)
             return

@@ -64,7 +64,7 @@ async def cmd_backtest(cfg: Config) -> None:
 
 
 async def cmd_scan(cfg: Config) -> None:
-    notifier = TelegramNotifier(cfg.telegram)
+    notifier = TelegramNotifier(cfg.telegram, risk=cfg.risk)
     live = cfg.mode == "live"
 
     if live:

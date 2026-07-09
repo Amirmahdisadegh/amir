@@ -70,6 +70,28 @@ class RiskState:
     positions: dict[str, OpenPosition] = field(default_factory=dict)
 
 
+def estimate_trade(signal, equity: float, risk_pct: float) -> dict | None:
+    """Plain-money preview of a signal for Mode-1 alerts (no order placed).
+
+    Sizes the trade so that hitting the stop loses exactly `risk_pct`% of
+    `equity`, using the signal's own entry/stop/TP. Returns amounts in USDT.
+    """
+    risk_per_unit = abs(signal.entry - signal.stop_loss)
+    reward_per_unit = abs(signal.take_profit - signal.entry)
+    if risk_per_unit <= 0 or equity <= 0:
+        return None
+    risk_amount = equity * (risk_pct / 100.0)
+    size = risk_amount / risk_per_unit          # base units (coins)
+    notional = size * signal.entry              # position value in USDT
+    profit_amount = size * reward_per_unit      # USDT gained if TP hit
+    return {
+        "size": size,
+        "notional": notional,
+        "risk_amount": risk_amount,             # USDT lost if stop hit
+        "profit_amount": profit_amount,
+    }
+
+
 class RiskRejection(Exception):
     """Raised when a trade cannot be opened under the risk rules."""
 

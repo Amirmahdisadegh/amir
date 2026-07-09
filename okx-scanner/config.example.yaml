@@ -35,6 +35,9 @@ scan:
   # A signal must appear on at least this many of the timeframes above
   # to be alerted (1 = any TF, 2 = confluence of two, etc.)
   min_timeframe_confluence: 1
+  # Only send alerts for signals scoring at least this (0-100). Raise to cut
+  # noise; ~60 keeps only decent setups, ~70 only strong ones. 0 = send all.
+  min_score: 60
 
 rtm:
   # --- structure detection ---

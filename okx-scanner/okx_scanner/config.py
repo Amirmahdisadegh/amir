@@ -46,6 +46,7 @@ class ScanCfg:
     ohlcv_limit: int = 300
     poll_interval_sec: int = 300
     min_timeframe_confluence: int = 1
+    min_score: float = 0.0        # only alert signals scoring >= this (0 = all)
 
 
 @dataclass(frozen=True)

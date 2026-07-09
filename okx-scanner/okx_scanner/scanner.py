@@ -91,16 +91,20 @@ class Scanner:
             all_signals.extend(r)
 
         signals = self._apply_confluence(all_signals)
-        signals.sort(key=lambda s: s.score, reverse=True)
 
-        for sig in signals:
+        # drop weak setups below the score threshold (noise control)
+        min_score = self.cfg.scan.min_score
+        strong = [s for s in signals if s.score >= min_score]
+        strong.sort(key=lambda s: s.score, reverse=True)
+
+        for sig in strong:
             await self.notifier.send_signal(sig)
             if self.executor is not None:
                 await self.executor.handle_signal(sig)
 
-        log.info("scan complete: %d raw / %d after confluence",
-                 len(all_signals), len(signals))
-        return signals
+        log.info("scan complete: %d raw / %d confluence / %d sent (score>=%g)",
+                 len(all_signals), len(signals), len(strong), min_score)
+        return strong
 
     async def run_forever(self) -> None:
         interval = self.cfg.scan.poll_interval_sec
