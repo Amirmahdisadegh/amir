@@ -60,6 +60,11 @@ class RtmCfg:
     max_dist_to_zone_atr: float = 1.5
     min_risk_reward: float = 1.8
     zone_freshness_bars: int = 60
+    # --- confirmation layer (makes signals "smarter") ---
+    trend_ema_period: int = 50       # EMA used for same-timeframe trend bias
+    rsi_period: int = 14
+    require_trend_alignment: bool = False  # hard-reject counter-trend setups
+    require_htf_alignment: bool = False    # hard-reject vs higher-timeframe trend
 
 
 @dataclass(frozen=True)

@@ -41,7 +41,14 @@ def _fmt_money(x: float) -> str:
 def format_signal(sig: Signal, risk: RiskCfg | None = None) -> str:
     direction = "🟢 خرید (LONG)" if sig.side is Side.LONG else "🔴 فروش (SHORT)"
     setup_name = "FTR" if sig.setup is SetupType.FTR else "Flag Limit"
-    vol_note = "  ·  📊 تأیید حجم" if "volume-confirmed" in sig.notes else ""
+    tags = []
+    if "volume-confirmed" in sig.notes:
+        tags.append("📊 تأیید حجم")
+    if "HTF-aligned" in sig.notes:
+        tags.append("📈 همسو با روند تایم‌بالا")
+    elif "trend-aligned" in sig.notes:
+        tags.append("📈 همسو با روند")
+    vol_note = ("  ·  " + "  ·  ".join(tags)) if tags else ""
 
     msg = (
         f"⚡️ <b>سیگنال جدید</b> — {direction}\n"

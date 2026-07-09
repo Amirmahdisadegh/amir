@@ -12,7 +12,7 @@ from collections import defaultdict
 
 from .config import Config
 from .data import OkxData
-from .indicators import atr, to_dataframe
+from .indicators import atr, to_dataframe, trend_bias
 from .notifier import TelegramNotifier
 from .rtm import detect_signals
 from .signals import Signal
@@ -35,16 +35,30 @@ class Scanner:
     # ------------------------------------------------------------------ #
     def _scan_symbol_frames(self, symbol: str,
                             frames: dict[str, list]) -> list[Signal]:
-        """Run RTM detection across all timeframes for one symbol."""
+        """Run RTM detection across all timeframes for one symbol.
+
+        The highest configured timeframe defines the dominant trend (HTF bias),
+        which is fed into every lower-timeframe detection so setups aligned with
+        the big-picture trend score higher (and can be hard-required in config).
+        """
+        # highest timeframe = last in the configured list
+        htf = self.cfg.scan.timeframes[-1] if self.cfg.scan.timeframes else None
+        htf_bias = 0
+        if htf and frames.get(htf) and len(frames[htf]) >= 30:
+            htf_df = to_dataframe(frames[htf])
+            htf_bias = trend_bias(htf_df["close"], self.cfg.rtm.trend_ema_period)
+
         found: list[Signal] = []
         for tf, ohlcv in frames.items():
             if not ohlcv or len(ohlcv) < 30:
                 continue
             df = to_dataframe(ohlcv)
             atr_series = atr(df, self.cfg.risk.atr_period)
+            # a signal ON the htf itself uses its own trend as the bias
+            bias = htf_bias
             try:
                 found.extend(
-                    detect_signals(df, atr_series, self.cfg.rtm, symbol, tf)
+                    detect_signals(df, atr_series, self.cfg.rtm, symbol, tf, bias)
                 )
             except Exception as e:  # one bad symbol must not kill the scan
                 log.exception("detection failed for %s %s: %s", symbol, tf, e)

@@ -2,8 +2,10 @@ import numpy as np
 import pandas as pd
 
 from okx_scanner.indicators import (
-    atr, candle_metrics, swing_points, to_dataframe, true_range,
+    atr, candle_metrics, ema, rsi, swing_points, to_dataframe, true_range,
+    trend_bias,
 )
+import pandas as pd
 
 
 def _ohlcv(rows):
@@ -42,3 +44,24 @@ def test_swing_points_detects_peak():
     is_high, is_low = swing_points(df, lookback=2)
     assert is_high[3]
     assert not is_high[0]
+
+
+def test_ema_tracks_series():
+    s = pd.Series([1.0] * 50)
+    assert abs(ema(s, 10).iloc[-1] - 1.0) < 1e-9
+
+
+def test_rsi_bounds():
+    # steadily rising close -> RSI high (near 100)
+    rows = [(i, i + 0.5, i - 0.5, i + 0.4, 1) for i in range(1, 40)]
+    df = to_dataframe(_ohlcv(rows))
+    r = rsi(df, 14).iloc[-1]
+    assert 0 <= r <= 100
+    assert r > 70  # strong uptrend
+
+
+def test_trend_bias_up_and_down():
+    up = pd.Series([float(i) for i in range(1, 80)])
+    assert trend_bias(up, 50) == 1
+    down = pd.Series([float(i) for i in range(80, 1, -1)])
+    assert trend_bias(down, 50) == -1

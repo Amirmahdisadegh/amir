@@ -19,10 +19,11 @@ def detect_signals(
     cfg: RtmCfg,
     symbol: str,
     timeframe: str,
+    htf_bias: int = 0,
 ) -> list[Signal]:
     signals: list[Signal] = []
-    signals.extend(ftr.detect(df, atr_series, cfg, symbol, timeframe))
-    signals.extend(flag_limit.detect(df, atr_series, cfg, symbol, timeframe))
+    signals.extend(ftr.detect(df, atr_series, cfg, symbol, timeframe, htf_bias))
+    signals.extend(flag_limit.detect(df, atr_series, cfg, symbol, timeframe, htf_bias))
     return signals
 
 

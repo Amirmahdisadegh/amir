@@ -77,6 +77,30 @@ def test_detect_bullish_setup():
     assert s.risk_reward >= cfg.min_risk_reward
 
 
+def test_htf_alignment_raises_score():
+    cfg = _relaxed_cfg()
+    rows, _ = _bullish_series()
+    df = to_dataframe(rows)
+    atr_series = atr(df, 14)
+    aligned = detect_signals(df, atr_series, cfg, "T/USDT:USDT", "1h", htf_bias=+1)
+    against = detect_signals(df, atr_series, cfg, "T/USDT:USDT", "1h", htf_bias=-1)
+    assert aligned and against
+    # a LONG setup with bullish HTF must score higher than with bearish HTF
+    assert aligned[0].score > against[0].score
+    assert "HTF-aligned" in aligned[0].notes
+
+
+def test_require_htf_alignment_rejects_counter_trend():
+    from okx_scanner.config import RtmCfg
+    base = _relaxed_cfg()
+    cfg = RtmCfg(**{**base.__dict__, "require_htf_alignment": True})
+    rows, _ = _bullish_series()
+    df = to_dataframe(rows)
+    atr_series = atr(df, 14)
+    # LONG setup, bearish HTF, hard requirement -> no signal
+    assert detect_signals(df, atr_series, cfg, "T/USDT:USDT", "1h", htf_bias=-1) == []
+
+
 def test_no_signal_on_flat_noise():
     cfg = _relaxed_cfg()
     rng = np.random.default_rng(0)

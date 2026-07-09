@@ -72,3 +72,41 @@ def swing_points(df: pd.DataFrame, lookback: int = 2) -> tuple[np.ndarray, np.nd
 
 def rolling_volume_avg(df: pd.DataFrame, period: int = 20) -> pd.Series:
     return df["volume"].rolling(period, min_periods=1).mean()
+
+
+def ema(series: pd.Series, period: int) -> pd.Series:
+    """Exponential moving average."""
+    return series.ewm(span=period, adjust=False, min_periods=1).mean()
+
+
+def rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """Wilder's RSI (0-100)."""
+    delta = df["close"].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    avg_loss = loss.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    # avg_loss == 0 with gains -> rs = +inf -> RSI = 100 (correct);
+    # 0/0 (flat) -> NaN -> treated as neutral 50 below.
+    rs = avg_gain / avg_loss
+    out = 100 - (100 / (1 + rs))
+    return out.fillna(50.0)
+
+
+def trend_bias(close: pd.Series, ema_period: int = 50, slope_lookback: int = 5) -> int:
+    """Directional bias from an EMA: +1 up, -1 down, 0 mixed/flat.
+
+    Up   = price above the EMA AND the EMA rising.
+    Down = price below the EMA AND the EMA falling.
+    """
+    if len(close) < ema_period:
+        return 0
+    e = ema(close, ema_period)
+    price = close.iloc[-1]
+    now, prev = e.iloc[-1], e.iloc[-min(slope_lookback, len(e))]
+    rising, falling = now > prev, now < prev
+    if price > now and rising:
+        return +1
+    if price < now and falling:
+        return -1
+    return 0

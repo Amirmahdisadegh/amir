@@ -19,7 +19,9 @@ import numpy as np
 import pandas as pd
 
 from ..config import RtmCfg
-from ..indicators import candle_metrics, rolling_volume_avg, swing_points
+from ..indicators import (
+    candle_metrics, rolling_volume_avg, rsi, swing_points, trend_bias,
+)
 from ..signals import Side, SetupType, Signal, Zone
 
 # Suggested take-profit if no opposing structure is found (in R multiples).
@@ -198,8 +200,14 @@ def make_signal(
     zone: Zone,
     setup: SetupType,
     bos: BOS,
+    htf_bias: int = 0,
 ) -> Signal | None:
-    """Turn a candidate zone into a validated Signal, or None if it fails filters."""
+    """Turn a candidate zone into a validated Signal, or None if it fails filters.
+
+    `htf_bias` is the higher-timeframe trend direction (+1/-1/0) supplied by the
+    scanner; it and the same-timeframe trend/RSI feed the confirmation score and
+    (optionally) hard-reject counter-trend setups.
+    """
     dfm = view.dfm
     n = len(dfm)
     last = n - 1
@@ -250,24 +258,62 @@ def make_signal(
     if side is Side.SHORT and price > zone.distal:
         return None
 
-    # --- confirmation-candle volume (scoring, not hard filter) ---
+    want = +1 if side is Side.LONG else -1
+
+    # --- confirmation-candle volume ---
     vol_avg = float(rolling_volume_avg(dfm, 20).iloc[last])
     last_vol = float(dfm["volume"].iloc[last])
     vol_ok = vol_avg > 0 and last_vol >= cfg.confirm_vol_mult * vol_avg
     if vol_ok:
         notes.append("volume-confirmed")
 
-    # --- score: RR + proximity + volume + leg strength + freshness ---
+    # --- same-timeframe trend (EMA) ---
+    tf_bias = trend_bias(dfm["close"], cfg.trend_ema_period)
+    tf_aligned = tf_bias == want
+    if tf_aligned:
+        notes.append("trend-aligned")
+
+    # --- higher-timeframe trend (supplied by caller) ---
+    htf_aligned = htf_bias == want
+    htf_against = htf_bias == -want
+    if htf_aligned:
+        notes.append("HTF-aligned")
+
+    # --- momentum (RSI): reward pullback entries, flag extremes ---
+    rsi_val = float(rsi(dfm, cfg.rsi_period).iloc[last])
+    if side is Side.LONG:
+        rsi_healthy = 35.0 <= rsi_val <= 65.0
+        rsi_extreme = rsi_val >= 75.0            # chasing an overbought pump
+    else:
+        rsi_healthy = 35.0 <= rsi_val <= 65.0
+        rsi_extreme = rsi_val <= 25.0            # shorting an oversold dump
+
+    # --- hard rejects (optional, config-driven) ---
+    if cfg.require_trend_alignment and not tf_aligned:
+        return None
+    if cfg.require_htf_alignment and htf_against:
+        return None
+
+    # --- technical score (structure quality) 0..100 ---
     leg_strength = abs(dfm["close"].iloc[bos.break_index] - bos.level) / atr
     proximity = 1.0 - min(dist / (cfg.max_dist_to_zone_atr * atr), 1.0)
     freshness = 1.0 - min(age / max(cfg.zone_freshness_bars, 1), 1.0)
-    score = (
+    technical = (
         min(rr / 3.0, 1.0) * 35
         + proximity * 25
         + freshness * 15
         + min(leg_strength / 3.0, 1.0) * 15
         + (10 if vol_ok else 0)
     )
+
+    # --- confirmation score (context quality) 0..100 ---
+    htf_pts = 45 if htf_aligned else (22 if htf_bias == 0 else 0)
+    tf_pts = 30 if tf_aligned else (15 if tf_bias == 0 else 0)
+    rsi_pts = 25 if rsi_healthy else (0 if rsi_extreme else 12)
+    confirmation = htf_pts + tf_pts + rsi_pts
+
+    # blended final confidence: structure 55% + context 45%
+    score = 0.55 * technical + 0.45 * confirmation
 
     return Signal(
         symbol=symbol,

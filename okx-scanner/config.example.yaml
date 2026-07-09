@@ -51,6 +51,11 @@ rtm:
   max_dist_to_zone_atr: 1.5    # price must be within this * ATR of the entry zone
   min_risk_reward: 1.8         # discard setups whose TP/SL RR is below this
   zone_freshness_bars: 60      # zone must have formed within this many bars
+  # --- confirmation layer (multi-factor "intelligence") ---
+  trend_ema_period: 50         # EMA for same-timeframe trend direction
+  rsi_period: 14               # RSI momentum check
+  require_trend_alignment: false  # true = only trade WITH the same-TF trend
+  require_htf_alignment: false    # true = only trade WITH the higher-TF trend
 
 risk:
   # --- NON-NEGOTIABLE. These caps are always enforced in live mode. ---

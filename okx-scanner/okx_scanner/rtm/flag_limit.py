@@ -45,6 +45,7 @@ def detect(
     cfg: RtmCfg,
     symbol: str,
     timeframe: str,
+    htf_bias: int = 0,
 ) -> list[Signal]:
     if len(df) < 30:
         return []
@@ -65,7 +66,6 @@ def detect(
 
     side = Side.LONG if bos.direction == +1 else Side.SHORT
     zone = st.zone_from_base(base, side)
-    sig = st.make_signal(
-        view, atr_series, cfg, symbol, timeframe, zone, SetupType.FLAG_LIMIT, bos
-    )
+    sig = st.make_signal(view, atr_series, cfg, symbol, timeframe, zone,
+                         SetupType.FLAG_LIMIT, bos, htf_bias)
     return [sig] if sig else []
