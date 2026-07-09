@@ -1,0 +1,27 @@
+# Secrets & local config
+.env
+config.yaml
+*.local.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Data / logs / reports
+data_cache/
+logs/
+*.log
+reports/
+backtest_results/
+state/
+*.db
+*.sqlite
+
+# OS
+.DS_Store
