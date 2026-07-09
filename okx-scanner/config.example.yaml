@@ -75,7 +75,21 @@ telegram:
   alert_cooldown_sec: 1800     # min seconds between identical alerts (symbol+tf+type)
 
 backtest:
-  symbols: ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"]
+  # A broader, liquid set gives a statistically meaningful sample. Testing on
+  # only 2-3 coins overfits to one window's luck.
+  symbols:
+    - "BTC/USDT:USDT"
+    - "ETH/USDT:USDT"
+    - "SOL/USDT:USDT"
+    - "BNB/USDT:USDT"
+    - "AVAX/USDT:USDT"
+    - "LINK/USDT:USDT"
+    - "LTC/USDT:USDT"
+    - "DOT/USDT:USDT"
+    - "SUI/USDT:USDT"
+    - "UNI/USDT:USDT"
+    - "AAVE/USDT:USDT"
+    - "INJ/USDT:USDT"
   timeframe: "1h"
   since_days: 120              # how many days of history to test
   starting_equity: 1000
