@@ -88,6 +88,9 @@ class BacktestCfg:
     timeframe: str = "1h"
     since_days: int = 120
     starting_equity: float = 1000
+    fee_pct: float = 0.05        # taker fee per side, % of notional (OKX ~0.05%)
+    slippage_pct: float = 0.02   # slippage on market (stop) fills, % of price
+    max_open_positions: int = 3  # portfolio-wide cap in the multi-symbol sim
 
 
 @dataclass(frozen=True)

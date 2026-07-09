@@ -69,6 +69,11 @@ class Scanner:
         if not self._universe:
             await self.refresh_universe()
 
+        # In live mode, first book any positions closed since last cycle so the
+        # daily-loss guard and open-position count are up to date.
+        if self.executor is not None:
+            await self.executor.reconcile()
+
         all_signals: list[Signal] = []
         tfs = self.cfg.scan.timeframes
 

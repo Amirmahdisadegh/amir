@@ -88,12 +88,42 @@ class Backtester:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.risk_pct = cfg.risk.risk_per_trade_pct
+        self.fee_pct = cfg.backtest.fee_pct
+        self.slippage_pct = cfg.backtest.slippage_pct
 
     def _size(self, equity: float, entry: float, stop: float) -> float:
         dist = abs(entry - stop)
         if dist <= 0:
             return 0.0
         return (equity * self.risk_pct / 100.0) / dist
+
+    def _exit_price(self, trade: Trade, high: float, low: float):
+        """Return (exit_price, outcome) if this bar closes the trade, else (None, '')."""
+        long = trade.side is Side.LONG
+        hit_sl = low <= trade.stop if long else high >= trade.stop
+        hit_tp = high >= trade.take_profit if long else low <= trade.take_profit
+        if hit_sl:                              # conservative: SL wins ties
+            slip = self.slippage_pct / 100.0    # stop = market fill -> slippage
+            price = trade.stop * (1 - slip) if long else trade.stop * (1 + slip)
+            return price, "sl"
+        if hit_tp:                              # take-profit = limit -> no slippage
+            return trade.take_profit, "tp"
+        return None, ""
+
+    def _book_close(self, trade: Trade, exit_price: float, outcome: str,
+                    exit_time: int, equity: float) -> float:
+        """Finalize a trade; return realized PnL (net of fees)."""
+        d = 1 if trade.side is Side.LONG else -1
+        gross = d * (exit_price - trade.entry) * trade.size
+        fee_rate = self.fee_pct / 100.0
+        fees = (trade.size * trade.entry + trade.size * exit_price) * fee_rate
+        trade.exit_price = exit_price
+        trade.exit_time = exit_time
+        trade.outcome = outcome
+        trade.pnl = gross - fees
+        risk_amt = equity * self.risk_pct / 100.0
+        trade.r_multiple = trade.pnl / risk_amt if risk_amt else 0.0
+        return trade.pnl
 
     def run_symbol(self, symbol: str, ohlcv: list[list]) -> BacktestResult:
         df = to_dataframe(ohlcv)
@@ -114,23 +144,10 @@ class Backtester:
         for i in range(WARMUP, n):
             # ---- manage an open trade against this bar ----
             if open_trade is not None:
-                hit_sl = lows[i] <= open_trade.stop if open_trade.side is Side.LONG \
-                    else highs[i] >= open_trade.stop
-                hit_tp = highs[i] >= open_trade.take_profit if open_trade.side is Side.LONG \
-                    else lows[i] <= open_trade.take_profit
-                exit_price = None
-                if hit_sl:                      # conservative: SL wins ties
-                    exit_price, open_trade.outcome = open_trade.stop, "sl"
-                elif hit_tp:
-                    exit_price, open_trade.outcome = open_trade.take_profit, "tp"
+                exit_price, outcome = self._exit_price(open_trade, highs[i], lows[i])
                 if exit_price is not None:
-                    d = 1 if open_trade.side is Side.LONG else -1
-                    open_trade.exit_price = exit_price
-                    open_trade.exit_time = int(times[i])
-                    open_trade.pnl = d * (exit_price - open_trade.entry) * open_trade.size
-                    risk_amt = equity * self.risk_pct / 100.0
-                    open_trade.r_multiple = open_trade.pnl / risk_amt if risk_amt else 0.0
-                    equity += open_trade.pnl
+                    equity += self._book_close(open_trade, exit_price, outcome,
+                                               int(times[i]), equity)
                     result.trades.append(open_trade)
                     open_trade = None
 
@@ -163,10 +180,92 @@ class Backtester:
 
         return result
 
+    def run_portfolio(self, symbol_ohlcv: dict[str, list]) -> BacktestResult:
+        """Multi-symbol sim on a shared equity with a portfolio-wide open cap.
+
+        All symbols are stepped on a unified timeline; at most
+        `backtest.max_open_positions` trades are open at once across the book.
+        """
+        cap = self.cfg.backtest.max_open_positions
+        result = BacktestResult(symbol="PORTFOLIO",
+                                starting_equity=self.cfg.backtest.starting_equity)
+        equity = self.cfg.backtest.starting_equity
+
+        # per-symbol precomputed context
+        ctx: dict[str, dict] = {}
+        all_ts: set[int] = set()
+        for symbol, ohlcv in symbol_ohlcv.items():
+            df = to_dataframe(ohlcv)
+            if len(df) < WARMUP + 5:
+                continue
+            times = df["timestamp"].to_numpy()
+            ctx[symbol] = {
+                "df": df,
+                "atr": atr(df, self.cfg.risk.atr_period),
+                "high": df["high"].to_numpy(),
+                "low": df["low"].to_numpy(),
+                "times": times,
+                "ts_to_i": {int(t): i for i, t in enumerate(times)},
+                "pending": None,
+                "pending_bar": -1,
+            }
+            all_ts.update(int(t) for t in times)
+
+        open_trades: dict[str, Trade] = {}
+        timeline = sorted(all_ts)
+
+        for t in timeline:
+            for symbol in sorted(ctx.keys()):
+                c = ctx[symbol]
+                i = c["ts_to_i"].get(t)
+                if i is None or i < WARMUP:
+                    continue
+                high, low = c["high"][i], c["low"][i]
+
+                # 1) manage open trade
+                trade = open_trades.get(symbol)
+                if trade is not None:
+                    exit_price, outcome = self._exit_price(trade, high, low)
+                    if exit_price is not None:
+                        equity += self._book_close(trade, exit_price, outcome, t, equity)
+                        result.trades.append(trade)
+                        del open_trades[symbol]
+                        trade = None
+
+                # 2) fill pending if a portfolio slot is free
+                if trade is None and c["pending"] is not None:
+                    if i - c["pending_bar"] > ENTRY_EXPIRY_BARS:
+                        c["pending"] = None
+                    elif len(open_trades) < cap and low <= c["pending"].entry <= high:
+                        p = c["pending"]
+                        size = self._size(equity, p.entry, p.stop_loss)
+                        if size > 0:
+                            open_trades[symbol] = Trade(
+                                symbol=symbol, side=p.side, setup=p.setup.value,
+                                entry=p.entry, stop=p.stop_loss,
+                                take_profit=p.take_profit, size=size, entry_time=t,
+                            )
+                        c["pending"] = None
+
+                # 3) detect (only worth it if a slot could open)
+                if (symbol not in open_trades and c["pending"] is None
+                        and len(open_trades) < cap):
+                    sigs = detect_signals(c["df"].iloc[: i + 1], c["atr"].iloc[: i + 1],
+                                          self.cfg.rtm, symbol,
+                                          self.cfg.backtest.timeframe)
+                    if sigs:
+                        c["pending"] = max(sigs, key=lambda s: s.score)
+                        c["pending_bar"] = i
+
+            result.equity_curve.append(equity)
+
+        return result
+
     async def run(self, data: OkxData) -> list[BacktestResult]:
         bt = self.cfg.backtest
         since = data.client.milliseconds() - bt.since_days * 24 * 60 * 60 * 1000
         results: list[BacktestResult] = []
+        fetched: dict[str, list] = {}
         for symbol in bt.symbols:
             log.info("backtest fetching %s %s (%d days)...",
                      symbol, bt.timeframe, bt.since_days)
@@ -174,7 +273,12 @@ class Backtester:
             if len(ohlcv) < WARMUP + 20:
                 log.warning("not enough data for %s (%d bars)", symbol, len(ohlcv))
                 continue
+            fetched[symbol] = ohlcv
             results.append(self.run_symbol(symbol, ohlcv))
+
+        # portfolio sim (shared equity + global open-position cap)
+        if len(fetched) > 1:
+            results.append(self.run_portfolio(fetched))
         return results
 
 
@@ -184,28 +288,34 @@ def print_report(results: list[BacktestResult]) -> None:
     except ImportError:
         tabulate = None
 
-    rows = [r.stats() for r in results]
-    if not rows:
+    all_stats = [r.stats() for r in results]
+    if not all_stats:
         print("No backtest results (insufficient data or no trades).")
         return
 
-    # aggregate
-    total_trades = sum(r["trades"] for r in rows)
-    total_wins = sum(r["wins"] for r in rows)
-    agg = {
-        "symbol": "ALL",
-        "trades": total_trades,
-        "wins": total_wins,
-        "losses": total_trades - total_wins,
-        "win_rate_pct": round(total_wins / total_trades * 100, 2) if total_trades else 0.0,
-        "profit_factor": "-",
-        "avg_rr": round(np.mean([r["avg_rr"] for r in rows]), 2),
-        "expectancy_r": round(np.mean([r["expectancy_r"] for r in rows]), 3),
-        "max_drawdown_pct": max(r["max_drawdown_pct"] for r in rows),
-        "return_pct": round(np.mean([r["return_pct"] for r in rows]), 2),
-        "final_equity": "-",
-    }
-    rows.append(agg)
+    # Separate the portfolio row: it must NOT be folded into the per-symbol
+    # aggregate (it already spans all symbols on shared equity).
+    per_symbol = [s for s in all_stats if s["symbol"] != "PORTFOLIO"]
+    portfolio = [s for s in all_stats if s["symbol"] == "PORTFOLIO"]
+
+    rows = list(per_symbol)
+    if per_symbol:
+        total_trades = sum(r["trades"] for r in per_symbol)
+        total_wins = sum(r["wins"] for r in per_symbol)
+        rows.append({
+            "symbol": "ALL (indep.)",
+            "trades": total_trades,
+            "wins": total_wins,
+            "losses": total_trades - total_wins,
+            "win_rate_pct": round(total_wins / total_trades * 100, 2) if total_trades else 0.0,
+            "profit_factor": "-",
+            "avg_rr": round(np.mean([r["avg_rr"] for r in per_symbol]), 2),
+            "expectancy_r": round(np.mean([r["expectancy_r"] for r in per_symbol]), 3),
+            "max_drawdown_pct": max(r["max_drawdown_pct"] for r in per_symbol),
+            "return_pct": round(np.mean([r["return_pct"] for r in per_symbol]), 2),
+            "final_equity": "-",
+        })
+    rows.extend(portfolio)  # realistic shared-equity result, shown last
 
     headers = ["symbol", "trades", "wins", "losses", "win_rate_pct",
                "profit_factor", "avg_rr", "expectancy_r", "max_drawdown_pct",

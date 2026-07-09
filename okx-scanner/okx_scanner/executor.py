@@ -23,6 +23,42 @@ from .signals import Side, Signal
 log = logging.getLogger("okx_scanner.executor")
 
 
+# --------------------------------------------------------------------------- #
+#  Pure reconciliation helpers (unit-testable without any network)
+# --------------------------------------------------------------------------- #
+def open_position_keys(positions: list[dict]) -> set[tuple[str, str]]:
+    """(symbol, side) of every exchange position that still holds contracts."""
+    keys: set[tuple[str, str]] = set()
+    for p in positions:
+        contracts = p.get("contracts") or p.get("contractSize") or 0
+        try:
+            if float(contracts) != 0:
+                keys.add((p.get("symbol"), p.get("side")))
+        except (TypeError, ValueError):
+            continue
+    return keys
+
+
+def realized_pnl_from_trades(trades: list[dict]) -> float:
+    """Sum realized PnL across fills (OKX exposes 'fillPnl' on each trade)."""
+    total = 0.0
+    for t in trades:
+        info = t.get("info", {}) or {}
+        val = None
+        for key in ("fillPnl", "pnl", "realizedPnl"):
+            if info.get(key) not in (None, ""):
+                val = info.get(key)
+                break
+        if val is None:
+            val = t.get("info", {}).get("fillPnl")
+        try:
+            if val is not None and val != "":
+                total += float(val)
+        except (TypeError, ValueError):
+            continue
+    return total
+
+
 class Executor:
     def __init__(self, cfg: Config, data: OkxData, risk: RiskManager,
                  notifier: TelegramNotifier):
@@ -57,6 +93,50 @@ class Executor:
             await self.data.client.set_leverage(lev, symbol)
         except Exception as e:
             log.warning("set_leverage failed for %s: %s", symbol, e)
+
+    async def _realized_pnl_for(self, pos) -> float:
+        """Best-effort realized PnL for a closed position, from recent fills."""
+        try:
+            since = None
+            if getattr(pos, "opened_at", None):
+                from datetime import datetime
+                since = int(datetime.fromisoformat(pos.opened_at).timestamp() * 1000)
+            trades = await self.data.client.fetch_my_trades(pos.symbol, since=since)
+            return realized_pnl_from_trades(trades)
+        except Exception as e:
+            log.warning("could not fetch fills for %s (%s); recording pnl=0",
+                        pos.symbol, e)
+            return 0.0
+
+    async def reconcile(self) -> None:
+        """Detect positions closed on the exchange (SL/TP hit) and book their PnL.
+
+        Without this, the daily-loss counter would never move in live mode.
+        Runs each scan cycle; safe to call when there is nothing to do.
+        """
+        if not self.risk.state.positions:
+            return
+        try:
+            positions = await self.data.client.fetch_positions()
+        except Exception as e:
+            log.warning("reconcile: fetch_positions failed: %s", e)
+            return
+
+        still_open = open_position_keys(positions)
+        for order_id, pos in list(self.risk.state.positions.items()):
+            if (pos.symbol, pos.side) in still_open:
+                continue
+            pnl = await self._realized_pnl_for(pos)
+            self.risk.register_close(order_id, pnl)
+            log.info("reconciled close %s %s pnl=%.2f", pos.symbol, pos.side, pnl)
+            await self.notifier.send_text(
+                f"📕 Closed {pos.symbol} {pos.side} · realized PnL {pnl:+.2f} USDT\n"
+                f"Daily loss now {self.risk.daily_loss_pct:.2f}%"
+            )
+        if self.risk.is_halted(await self._equity()):
+            await self.notifier.send_text(
+                "🛑 Daily loss limit reached — trading halted for the day."
+            )
 
     async def handle_signal(self, signal: Signal) -> None:
         equity = await self._equity()

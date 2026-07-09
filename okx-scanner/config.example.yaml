@@ -71,6 +71,9 @@ backtest:
   timeframe: "1h"
   since_days: 120              # how many days of history to test
   starting_equity: 1000
+  fee_pct: 0.05                # taker fee charged per side (% of notional)
+  slippage_pct: 0.02           # slippage applied to market/stop fills (% of price)
+  max_open_positions: 3        # portfolio-wide concurrent position cap
 
 security:
   # Reminder only — enforce IP allow-listing on the OKX API key itself.
