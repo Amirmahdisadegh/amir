@@ -51,9 +51,12 @@ class OkxData:
 
         self.client = ccxt.okx(params)
         self._apply_proxy_env()
-        if cfg.exchange.sandbox:
-            # OKX Demo Trading (paper). Applies to both data and trading.
+        # Sandbox (OKX Demo) has almost no real volume/liquidity, so it must
+        # NEVER back the market-data used for scanning — that would filter the
+        # whole universe out. Demo only makes sense for the execution client.
+        if cfg.exchange.sandbox and authenticated:
             self.client.set_sandbox_mode(True)
+            log.info("execution client using OKX Demo (sandbox) mode")
 
         self._sem = asyncio.Semaphore(max(1, cfg.exchange.max_concurrency))
 
@@ -98,7 +101,13 @@ class OkxData:
                 continue
             if want_swap and market.get("spot", False):
                 continue
+            # OKX perp tickers don't always populate quoteVolume; fall back to
+            # base volume * last price so the volume filter still works.
             qv = t.get("quoteVolume") or 0.0
+            if not qv:
+                base_vol = t.get("baseVolume") or 0.0
+                last = t.get("last") or t.get("close") or 0.0
+                qv = float(base_vol) * float(last)
             if qv < u.min_quote_volume:
                 continue
             if symbol in u.exclude:

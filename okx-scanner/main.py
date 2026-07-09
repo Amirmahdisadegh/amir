@@ -75,12 +75,16 @@ async def cmd_scan(cfg: Config) -> None:
         logging.getLogger("main").warning(
             "LIVE MODE. sandbox=%s. Risk limits are enforced.", cfg.exchange.sandbox)
 
-    # Data client: authenticated only when we actually trade.
-    data = OkxData(cfg, authenticated=live)
+    # Market data ALWAYS comes from production (public, real liquidity).
+    data = OkxData(cfg)
+    # In live mode, a separate authenticated client handles execution and may
+    # point at OKX Demo (sandbox) per config.
+    trade_data = None
     executor = None
     if live:
+        trade_data = OkxData(cfg, authenticated=True)
         risk = RiskManager(cfg.risk)
-        executor = Executor(cfg, data, risk, notifier)
+        executor = Executor(cfg, trade_data, risk, notifier)
 
     scanner = Scanner(cfg, data, notifier, executor=executor)
     try:
@@ -89,6 +93,8 @@ async def cmd_scan(cfg: Config) -> None:
         logging.getLogger("main").info("shutting down...")
     finally:
         await data.close()
+        if trade_data is not None:
+            await trade_data.close()
         await notifier.close()
 
 
