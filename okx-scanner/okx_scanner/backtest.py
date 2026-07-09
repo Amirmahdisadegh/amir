@@ -172,6 +172,8 @@ class Backtester:
                 atr_win = atr_series.iloc[: i + 1]
                 sigs = detect_signals(window, atr_win, self.cfg.rtm,
                                       symbol, self.cfg.backtest.timeframe)
+                # test only what the live bot would actually trade (score gate)
+                sigs = [s for s in sigs if s.score >= self.cfg.scan.min_score]
                 if sigs:
                     pending = max(sigs, key=lambda s: s.score)
                     pending_bar = i
@@ -253,6 +255,7 @@ class Backtester:
                     sigs = detect_signals(c["df"].iloc[: i + 1], c["atr"].iloc[: i + 1],
                                           self.cfg.rtm, symbol,
                                           self.cfg.backtest.timeframe)
+                    sigs = [s for s in sigs if s.score >= self.cfg.scan.min_score]
                     if sigs:
                         c["pending"] = max(sigs, key=lambda s: s.score)
                         c["pending_bar"] = i
@@ -261,15 +264,44 @@ class Backtester:
 
         return result
 
+    def _cache_path(self, symbol: str, tf: str) -> "Path":
+        from pathlib import Path
+        safe = symbol.replace("/", "_").replace(":", "-")
+        d = Path("data_cache")
+        d.mkdir(exist_ok=True)
+        return d / f"{safe}_{tf}_{self.cfg.backtest.since_days}d.json"
+
+    async def _load_history(self, data: OkxData, symbol: str, since: int) -> list:
+        """Fetch history, caching to disk so repeated backtests are instant.
+
+        The cache is reused when written the same UTC day (calibration loops),
+        avoiding a slow multi-minute re-download on every run.
+        """
+        import json
+        import time as _t
+        tf = self.cfg.backtest.timeframe
+        path = self._cache_path(symbol, tf)
+        if path.exists() and (_t.time() - path.stat().st_mtime) < 24 * 3600:
+            try:
+                return json.loads(path.read_text())
+            except Exception:
+                pass
+        log.info("backtest fetching %s %s (%d days)...",
+                 symbol, tf, self.cfg.backtest.since_days)
+        ohlcv = await data.fetch_ohlcv_history(symbol, tf, since)
+        try:
+            path.write_text(json.dumps(ohlcv))
+        except Exception as e:
+            log.warning("could not cache %s: %s", symbol, e)
+        return ohlcv
+
     async def run(self, data: OkxData) -> list[BacktestResult]:
         bt = self.cfg.backtest
         since = data.client.milliseconds() - bt.since_days * 24 * 60 * 60 * 1000
         results: list[BacktestResult] = []
         fetched: dict[str, list] = {}
         for symbol in bt.symbols:
-            log.info("backtest fetching %s %s (%d days)...",
-                     symbol, bt.timeframe, bt.since_days)
-            ohlcv = await data.fetch_ohlcv_history(symbol, bt.timeframe, since)
+            ohlcv = await self._load_history(data, symbol, since)
             if len(ohlcv) < WARMUP + 20:
                 log.warning("not enough data for %s (%d bars)", symbol, len(ohlcv))
                 continue
