@@ -53,6 +53,7 @@ class OpenPosition:
     take_profit: float
     size: float
     opened_at: str
+    status: str = "pending"        # "pending" (order resting) | "open" (filled)
 
 
 @dataclass
@@ -224,12 +225,30 @@ class RiskManager:
     #  Bookkeeping
     # ------------------------------------------------------------------ #
     def register_open(self, order_id: str, plan: PositionPlan) -> None:
+        """Record a newly placed entry order. Starts as 'pending' (not yet filled)."""
         self.state.positions[order_id] = OpenPosition(
             symbol=plan.symbol, side=plan.side.value, entry=plan.entry,
             stop_loss=plan.stop_loss, take_profit=plan.take_profit,
             size=plan.size, opened_at=datetime.now(timezone.utc).isoformat(),
+            status="pending",
         )
         self.save()
+
+    def mark_filled(self, order_id: str) -> None:
+        """Promote a pending entry to an open position (limit order filled)."""
+        pos = self.state.positions.get(order_id)
+        if pos and pos.status != "open":
+            pos.status = "open"
+            self.save()
+            log.info("entry filled: %s %s", pos.symbol, pos.side)
+
+    def drop_pending(self, order_id: str) -> None:
+        """Remove a pending entry that was cancelled/expired without filling."""
+        pos = self.state.positions.pop(order_id, None)
+        if pos:
+            self.save()
+            log.info("pending entry cleared (unfilled): %s %s",
+                     pos.symbol, pos.side)
 
     def register_close(self, order_id: str, realized_pnl: float) -> None:
         self.state.positions.pop(order_id, None)

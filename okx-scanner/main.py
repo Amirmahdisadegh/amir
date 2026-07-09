@@ -26,12 +26,26 @@ from okx_scanner.risk import RiskManager
 from okx_scanner.scanner import Scanner
 
 
-def setup_logging(level: str = "INFO") -> None:
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s %(levelname)-7s %(name)s | %(message)s",
-        datefmt="%H:%M:%S",
-    )
+def setup_logging(level: str = "INFO", log_file: str = "logs/okx-scanner.log") -> None:
+    fmt = logging.Formatter(
+        "%(asctime)s %(levelname)-7s %(name)s | %(message)s", datefmt="%H:%M:%S")
+    root = logging.getLogger()
+    root.setLevel(getattr(logging, level.upper(), logging.INFO))
+
+    console = logging.StreamHandler()
+    console.setFormatter(fmt)
+    root.addHandler(console)
+
+    # rotating file log so a long-running server keeps history without growth
+    try:
+        from logging.handlers import RotatingFileHandler
+        from pathlib import Path
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        fh = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=5)
+        fh.setFormatter(fmt)
+        root.addHandler(fh)
+    except Exception as e:  # file logging is best-effort
+        root.warning("file logging disabled: %s", e)
 
 
 async def cmd_universe(cfg: Config) -> None:

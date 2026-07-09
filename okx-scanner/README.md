@@ -144,8 +144,61 @@ python main.py backtest
 
 ```bash
 pip install pytest
-pytest -q        # تست‌های indicators، RTM و risk (بدون نیاز به شبکه)
+pytest -q        # ۲۵ تست: indicators، RTM، risk، backtest، reconcile (بدون شبکه)
 ```
+
+---
+
+## استقرار روی سرور (IP: 206.245.166.128)
+
+چون IP کلید OKX روی IP سرور شما whitelist می‌شود، ربات باید **روی همان سرور**
+اجرا شود تا خروجی از همان IP باشد.
+
+### گزینه A — Docker (پیشنهادی)
+
+```bash
+cp config.example.yaml config.yaml   # ویرایش
+cp .env.example .env                  # رمزها
+docker compose up -d                  # اجرا (restart: unless-stopped)
+docker compose logs -f                # لاگ زنده
+docker compose run --rm okx-scanner backtest   # اجرای بک‌تست
+```
+
+`state/` و `logs/` به‌صورت volume نگه‌داری می‌شوند تا شمارندهٔ ضرر روزانه و
+تاریخچهٔ لاگ بعد از restart حفظ شوند.
+
+### گزینه B — systemd (بدون Docker)
+
+```bash
+make install                          # ساخت venv + نصب
+cp config.example.yaml config.yaml && cp .env.example .env
+sudo cp deploy/okx-scanner.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now okx-scanner
+journalctl -u okx-scanner -f          # لاگ
+```
+
+### Makefile (میان‌بُرها)
+
+```bash
+make test | make scan | make backtest | make universe | make docker-up
+```
+
+> لاگ‌ها هم روی کنسول و هم در `logs/okx-scanner.log` (چرخشی، ۵ فایل × ۵MB) نوشته می‌شوند.
+
+---
+
+## چرخهٔ حیات سفارش در Mode 2 (state machine)
+
+هر سفارش سه حالت دارد و `reconcile` هر سیکل آن‌ها را با صرافی هماهنگ می‌کند:
+
+| حالت | یعنی | گذار |
+|------|------|------|
+| `pending` | سفارش Limit ثبت شده، هنوز پر نشده | اگر پوزیشن ظاهر شود → `open`؛ اگر سفارش و پوزیشن هر دو نباشند → حذف (لغو/انقضا) |
+| `open` | پوزیشن واقعی باز است | اگر پوزیشن ناپدید شود → `closed` و ثبت PnL در ضرر روزانه |
+| `closed` | بسته شده (SL/TP) | — |
+
+این تفکیک جلوی یک باگ مهم را می‌گیرد: سفارشِ Limitِ پرنشده دیگر اشتباهاً
+«بسته‌شده» تلقی نمی‌شود.
 
 ---
 

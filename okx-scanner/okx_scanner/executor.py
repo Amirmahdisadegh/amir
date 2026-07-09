@@ -39,6 +39,36 @@ def open_position_keys(positions: list[dict]) -> set[tuple[str, str]]:
     return keys
 
 
+def reconcile_actions(
+    tracked: dict,
+    open_order_ids: set[str],
+    position_keys: set[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    """Pure state machine mapping tracked entries to (order_id, action).
+
+    Actions:
+      "filled"    — pending order gone from the book AND a position now exists
+      "cancelled" — pending order gone AND no position (never filled)
+      "closed"    — a previously-open position no longer exists (SL/TP hit)
+    Entries that are unchanged (still resting, or still open) produce no action.
+    """
+    actions: list[tuple[str, str]] = []
+    for order_id, pos in tracked.items():
+        key = (pos.symbol, pos.side)
+        if pos.status == "pending":
+            if order_id in open_order_ids:
+                continue                      # still resting on the book
+            if key in position_keys:
+                actions.append((order_id, "filled"))
+            else:
+                actions.append((order_id, "cancelled"))
+        else:  # "open"
+            if key in position_keys:
+                continue                      # still open
+            actions.append((order_id, "closed"))
+    return actions
+
+
 def realized_pnl_from_trades(trades: list[dict]) -> float:
     """Sum realized PnL across fills (OKX exposes 'fillPnl' on each trade)."""
     total = 0.0
@@ -109,10 +139,12 @@ class Executor:
             return 0.0
 
     async def reconcile(self) -> None:
-        """Detect positions closed on the exchange (SL/TP hit) and book their PnL.
+        """Sync tracked entries with the exchange: promote fills, drop unfilled
+        orders, and book realized PnL for positions closed by SL/TP.
 
-        Without this, the daily-loss counter would never move in live mode.
-        Runs each scan cycle; safe to call when there is nothing to do.
+        Distinguishes resting limit orders (pending) from real positions (open)
+        so an unfilled entry is never mistaken for a closed trade. Without this,
+        the daily-loss counter would never move in live mode. Runs each cycle.
         """
         if not self.risk.state.positions:
             return
@@ -121,18 +153,34 @@ class Executor:
         except Exception as e:
             log.warning("reconcile: fetch_positions failed: %s", e)
             return
+        try:
+            open_orders = await self.data.client.fetch_open_orders()
+            open_ids = {str(o.get("id")) for o in open_orders}
+        except Exception as e:
+            log.warning("reconcile: fetch_open_orders failed (%s); "
+                        "treating all orders as resting to stay safe", e)
+            open_ids = set(self.risk.state.positions.keys())
 
-        still_open = open_position_keys(positions)
-        for order_id, pos in list(self.risk.state.positions.items()):
-            if (pos.symbol, pos.side) in still_open:
-                continue
-            pnl = await self._realized_pnl_for(pos)
-            self.risk.register_close(order_id, pnl)
-            log.info("reconciled close %s %s pnl=%.2f", pos.symbol, pos.side, pnl)
-            await self.notifier.send_text(
-                f"📕 Closed {pos.symbol} {pos.side} · realized PnL {pnl:+.2f} USDT\n"
-                f"Daily loss now {self.risk.daily_loss_pct:.2f}%"
-            )
+        pos_keys = open_position_keys(positions)
+        for order_id, action in reconcile_actions(
+            dict(self.risk.state.positions), open_ids, pos_keys
+        ):
+            if action == "filled":
+                self.risk.mark_filled(order_id)
+            elif action == "cancelled":
+                self.risk.drop_pending(order_id)
+            elif action == "closed":
+                pos = self.risk.state.positions[order_id]
+                pnl = await self._realized_pnl_for(pos)
+                self.risk.register_close(order_id, pnl)
+                log.info("reconciled close %s %s pnl=%.2f",
+                         pos.symbol, pos.side, pnl)
+                await self.notifier.send_text(
+                    f"📕 Closed {pos.symbol} {pos.side} · realized PnL "
+                    f"{pnl:+.2f} USDT\nDaily loss now "
+                    f"{self.risk.daily_loss_pct:.2f}%"
+                )
+
         if self.risk.is_halted(await self._equity()):
             await self.notifier.send_text(
                 "🛑 Daily loss limit reached — trading halted for the day."

@@ -1,0 +1,26 @@
+# systemd unit for running the scanner directly (no Docker).
+# Install:
+#   sudo cp deploy/okx-scanner.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now okx-scanner
+# Edit User/WorkingDirectory/paths to match your server.
+
+[Unit]
+Description=OKX RTM Scanner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=trader
+WorkingDirectory=/opt/okx-scanner
+# use the project virtualenv
+ExecStart=/opt/okx-scanner/.venv/bin/python main.py scan
+Restart=on-failure
+RestartSec=10
+# don't restart-loop forever if the config is broken
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target
