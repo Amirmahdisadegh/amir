@@ -96,6 +96,9 @@ class Executor:
         self.data = data          # MUST be an authenticated OkxData
         self.risk = risk
         self.notifier = notifier
+        # symbols we've learned are not tradable here (not on the venue,
+        # compliance-restricted, or too small) — skipped silently after once
+        self._skip_symbols: set[str] = set()
 
         if not cfg.exchange.sandbox:
             log.warning(
@@ -106,16 +109,23 @@ class Executor:
 
     # ------------------------------------------------------------------ #
     async def _equity(self) -> float:
-        """Live free USDT balance, falling back to configured equity."""
+        """Sizing capital: the configured amount, capped by live free balance.
+
+        `account_equity_usdt` is the capital YOU choose to risk with, so it is
+        the sizing basis even when the (demo) account is funded with far more.
+        We still cap by the live free balance so we never size beyond what is
+        actually available.
+        """
+        configured = float(self.cfg.risk.account_equity_usdt)
         try:
             bal = await self.data.client.fetch_balance()
             usdt = bal.get("USDT", {})
             free = usdt.get("free") or usdt.get("total")
             if free:
-                return float(free)
+                return min(configured, float(free))
         except Exception as e:
             log.warning("could not fetch balance (%s); using configured equity", e)
-        return self.cfg.risk.account_equity_usdt
+        return configured
 
     async def _set_leverage(self, symbol: str, leverage: float) -> None:
         lev = max(1, min(int(leverage) or 1, self.cfg.risk.max_leverage))
@@ -187,6 +197,10 @@ class Executor:
             )
 
     async def handle_signal(self, signal: Signal) -> None:
+        # symbols already known to be untradable here: skip silently (no spam)
+        if signal.symbol in self._skip_symbols:
+            return
+
         equity = await self._equity()
 
         if self.risk.is_halted(equity):
@@ -205,13 +219,15 @@ class Executor:
 
         side = "buy" if plan.side is Side.LONG else "sell"
 
-        # markets must be loaded on THIS (trade) client to resolve the symbol
+        # markets must be loaded on THIS (trade) client to resolve the symbol.
+        # Symbol not on the venue (e.g. tokenized stock, or not on demo) -> skip
+        # silently and remember it, so we don't spam the same message every cycle.
         try:
             await self.data.load_markets()
             market = self.data.client.market(signal.symbol)
         except Exception as e:
-            log.error("market lookup failed for %s: %s", signal.symbol, e)
-            await self.notifier.send_text(f"⚠️ Order skipped {signal.symbol}: {e}")
+            log.info("skip %s: not tradable here (%s)", signal.symbol, e)
+            self._skip_symbols.add(signal.symbol)
             return
 
         # OKX swaps are priced in CONTRACTS: convert base-currency size to contracts
@@ -219,10 +235,9 @@ class Executor:
         amount_contracts = plan.size / contract_size
         min_amt = (((market.get("limits") or {}).get("amount") or {}).get("min")) or 0
         if min_amt and amount_contracts < min_amt:
-            msg = (f"skip {signal.symbol}: size {amount_contracts:.4f} < exchange "
-                   f"min {min_amt} (capital too small for this symbol)")
-            log.info(msg)
-            await self.notifier.send_text(f"↩️ {msg}")
+            log.info("skip %s: size %.4f < exchange min %s (capital too small)",
+                     signal.symbol, amount_contracts, min_amt)
+            self._skip_symbols.add(signal.symbol)
             return
         try:
             amount = float(self.data.client.amount_to_precision(
@@ -253,8 +268,10 @@ class Executor:
             )
         except Exception as e:
             log.error("order placement failed for %s: %s", signal.symbol, e)
+            # remember so we don't retry (and re-notify) the same broken symbol
+            self._skip_symbols.add(signal.symbol)
             await self.notifier.send_text(
-                f"⚠️ Order FAILED {signal.symbol}: {e}"
+                f"⚠️ Order FAILED {signal.symbol} (won't retry): {str(e)[:180]}"
             )
             return
 
