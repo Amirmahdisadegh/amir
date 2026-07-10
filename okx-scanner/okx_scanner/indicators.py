@@ -60,13 +60,22 @@ def swing_points(df: pd.DataFrame, lookback: int = 2) -> tuple[np.ndarray, np.nd
     is_high = np.zeros(n, dtype=bool)
     is_low = np.zeros(n, dtype=bool)
 
-    for i in range(lookback, n - lookback):
-        window_h = highs[i - lookback : i + lookback + 1]
-        window_l = lows[i - lookback : i + lookback + 1]
-        if highs[i] == window_h.max() and (window_h == highs[i]).sum() == 1:
-            is_high[i] = True
-        if lows[i] == window_l.min() and (window_l == lows[i]).sum() == 1:
-            is_low[i] = True
+    w = 2 * lookback + 1
+    if n < w:
+        return is_high, is_low
+
+    from numpy.lib.stride_tricks import sliding_window_view
+    hw = sliding_window_view(highs, w)      # rows k -> center index k+lookback
+    lw = sliding_window_view(lows, w)
+    center_h = highs[lookback:n - lookback]
+    center_l = lows[lookback:n - lookback]
+    # strict pivot: center is the unique max/min of its window
+    is_high[lookback:n - lookback] = (
+        (center_h == hw.max(axis=1)) & ((hw == center_h[:, None]).sum(axis=1) == 1)
+    )
+    is_low[lookback:n - lookback] = (
+        (center_l == lw.min(axis=1)) & ((lw == center_l[:, None]).sum(axis=1) == 1)
+    )
     return is_high, is_low
 
 

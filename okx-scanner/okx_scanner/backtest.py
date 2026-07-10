@@ -295,6 +295,98 @@ class Backtester:
             log.warning("could not cache %s: %s", symbol, e)
         return ohlcv
 
+    # ---- fast path for optimization: detect once, replay many combos ---- #
+    def precompute_portfolio(self, symbol_ohlcv: dict[str, list]) -> dict:
+        """Run the expensive per-bar detection ONCE per symbol.
+
+        Detection is done with the trend filter OFF (so every candidate is
+        kept); each combo later re-applies min_score / trend filters cheaply on
+        the stored per-bar best signal. This turns an N-combo optimization from
+        N detection passes into one.
+        """
+        import dataclasses as dc
+        rtm_all = dc.replace(self.cfg.rtm, require_trend_alignment=False)
+        ctx: dict[str, dict] = {}
+        n_syms = len(symbol_ohlcv)
+        for k, (symbol, ohlcv) in enumerate(symbol_ohlcv.items(), 1):
+            print(f"  detecting {symbol} ({k}/{n_syms})...", flush=True)
+            df = to_dataframe(ohlcv)
+            if len(df) < WARMUP + 5:
+                continue
+            atr_series = atr(df, self.cfg.risk.atr_period)
+            n = len(df)
+            bar_signals: list = [None] * n
+            for i in range(WARMUP, n):
+                sigs = detect_signals(df.iloc[: i + 1], atr_series.iloc[: i + 1],
+                                      rtm_all, symbol, self.cfg.backtest.timeframe)
+                if sigs:
+                    bar_signals[i] = max(sigs, key=lambda s: s.score)
+            times = df["timestamp"].to_numpy()
+            ctx[symbol] = {
+                "high": df["high"].to_numpy(),
+                "low": df["low"].to_numpy(),
+                "times": times,
+                "ts_to_i": {int(t): i for i, t in enumerate(times)},
+                "bar_signals": bar_signals,
+            }
+        return ctx
+
+    def replay_portfolio(self, precomp: dict, min_score: float,
+                         require_aligned: bool) -> BacktestResult:
+        """Cheap portfolio simulation over precomputed per-bar signals."""
+        cap = self.cfg.backtest.max_open_positions
+        result = BacktestResult(symbol="PORTFOLIO",
+                                starting_equity=self.cfg.backtest.starting_equity)
+        equity = self.cfg.backtest.starting_equity
+
+        state = {s: {"pending": None, "pending_bar": -1} for s in precomp}
+        open_trades: dict[str, Trade] = {}
+        all_ts = sorted({t for c in precomp.values() for t in c["ts_to_i"]})
+
+        for t in all_ts:
+            for symbol in sorted(precomp.keys()):
+                c = precomp[symbol]
+                st = state[symbol]
+                i = c["ts_to_i"].get(t)
+                if i is None or i < WARMUP:
+                    continue
+                high, low = c["high"][i], c["low"][i]
+
+                trade = open_trades.get(symbol)
+                if trade is not None:
+                    exit_price, outcome = self._exit_price(trade, high, low)
+                    if exit_price is not None:
+                        equity += self._book_close(trade, exit_price, outcome, t, equity)
+                        result.trades.append(trade)
+                        del open_trades[symbol]
+                        trade = None
+
+                if trade is None and st["pending"] is not None:
+                    if i - st["pending_bar"] > ENTRY_EXPIRY_BARS:
+                        st["pending"] = None
+                    elif len(open_trades) < cap and low <= st["pending"].entry <= high:
+                        p = st["pending"]
+                        size = self._size(equity, p.entry, p.stop_loss)
+                        if size > 0:
+                            open_trades[symbol] = Trade(
+                                symbol=symbol, side=p.side, setup=p.setup.value,
+                                entry=p.entry, stop=p.stop_loss,
+                                take_profit=p.take_profit, size=size, entry_time=t,
+                            )
+                        st["pending"] = None
+
+                if (symbol not in open_trades and st["pending"] is None
+                        and len(open_trades) < cap):
+                    s = c["bar_signals"][i]
+                    if (s is not None and s.score >= min_score
+                            and (not require_aligned or "trend-aligned" in s.notes)):
+                        st["pending"] = s
+                        st["pending_bar"] = i
+
+            result.equity_curve.append(equity)
+
+        return result
+
     async def fetch_all(self, data: OkxData) -> dict[str, list]:
         """Load (cached) history for every configured symbol."""
         bt = self.cfg.backtest
@@ -324,27 +416,27 @@ async def grid_search(cfg: Config, data: OkxData) -> list[dict]:
     Tries combinations of min_score and the same-timeframe trend filter, runs
     the portfolio simulation for each, and returns PORTFOLIO stats per combo.
     """
-    import dataclasses as dc
-
-    base = Backtester(cfg)
-    fetched = await base.fetch_all(data)
+    bt = Backtester(cfg)
+    fetched = await bt.fetch_all(data)
     if len(fetched) < 2:
         return []
 
-    min_scores = [50, 55, 60, 65, 70]
+    print(f"\nDetecting signals once over {len(fetched)} symbols "
+          f"(the slow part)...", flush=True)
+    precomp = bt.precompute_portfolio(fetched)
+    print("Replaying configurations...\n", flush=True)
+
+    min_scores = [50, 60, 65, 70]
     trend_flags = [False, True]
+    total = len(min_scores) * len(trend_flags)
 
     rows: list[dict] = []
+    done = 0
     for ms in min_scores:
         for tf_flag in trend_flags:
-            cfg2 = dc.replace(
-                cfg,
-                scan=dc.replace(cfg.scan, min_score=ms),
-                rtm=dc.replace(cfg.rtm, require_trend_alignment=tf_flag),
-            )
-            res = Backtester(cfg2).run_portfolio(fetched)
-            s = res.stats()
-            rows.append({
+            s = bt.replay_portfolio(precomp, ms, tf_flag).stats()
+            done += 1
+            row = {
                 "min_score": ms,
                 "trend_filter": "on" if tf_flag else "off",
                 "trades": s["trades"],
@@ -353,7 +445,13 @@ async def grid_search(cfg: Config, data: OkxData) -> list[dict]:
                 "max_drawdown_pct": s["max_drawdown_pct"],
                 "return_pct": s["return_pct"],
                 "expectancy_r": s["expectancy_r"],
-            })
+            }
+            rows.append(row)
+            print(f"  [{done}/{total}] min_score={ms:<3} "
+                  f"trend={'on ' if tf_flag else 'off'} -> "
+                  f"trades={row['trades']:<4} win={row['win_rate_pct']:<5} "
+                  f"PF={row['profit_factor']:<5} return={row['return_pct']}%",
+                  flush=True)
 
     # rank: profitable & enough trades first, by profit factor then return
     def key(r):
