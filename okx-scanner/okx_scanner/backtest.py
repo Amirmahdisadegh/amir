@@ -295,10 +295,10 @@ class Backtester:
             log.warning("could not cache %s: %s", symbol, e)
         return ohlcv
 
-    async def run(self, data: OkxData) -> list[BacktestResult]:
+    async def fetch_all(self, data: OkxData) -> dict[str, list]:
+        """Load (cached) history for every configured symbol."""
         bt = self.cfg.backtest
         since = data.client.milliseconds() - bt.since_days * 24 * 60 * 60 * 1000
-        results: list[BacktestResult] = []
         fetched: dict[str, list] = {}
         for symbol in bt.symbols:
             ohlcv = await self._load_history(data, symbol, since)
@@ -306,12 +306,84 @@ class Backtester:
                 log.warning("not enough data for %s (%d bars)", symbol, len(ohlcv))
                 continue
             fetched[symbol] = ohlcv
-            results.append(self.run_symbol(symbol, ohlcv))
+        return fetched
+
+    async def run(self, data: OkxData) -> list[BacktestResult]:
+        fetched = await self.fetch_all(data)
+        results = [self.run_symbol(s, o) for s, o in fetched.items()]
 
         # portfolio sim (shared equity + global open-position cap)
         if len(fetched) > 1:
             results.append(self.run_portfolio(fetched))
         return results
+
+
+async def grid_search(cfg: Config, data: OkxData) -> list[dict]:
+    """Sweep key settings over the cached data and rank by profit factor.
+
+    Tries combinations of min_score and the same-timeframe trend filter, runs
+    the portfolio simulation for each, and returns PORTFOLIO stats per combo.
+    """
+    import dataclasses as dc
+
+    base = Backtester(cfg)
+    fetched = await base.fetch_all(data)
+    if len(fetched) < 2:
+        return []
+
+    min_scores = [50, 55, 60, 65, 70]
+    trend_flags = [False, True]
+
+    rows: list[dict] = []
+    for ms in min_scores:
+        for tf_flag in trend_flags:
+            cfg2 = dc.replace(
+                cfg,
+                scan=dc.replace(cfg.scan, min_score=ms),
+                rtm=dc.replace(cfg.rtm, require_trend_alignment=tf_flag),
+            )
+            res = Backtester(cfg2).run_portfolio(fetched)
+            s = res.stats()
+            rows.append({
+                "min_score": ms,
+                "trend_filter": "on" if tf_flag else "off",
+                "trades": s["trades"],
+                "win_rate_pct": s["win_rate_pct"],
+                "profit_factor": s["profit_factor"],
+                "max_drawdown_pct": s["max_drawdown_pct"],
+                "return_pct": s["return_pct"],
+                "expectancy_r": s["expectancy_r"],
+            })
+
+    # rank: profitable & enough trades first, by profit factor then return
+    def key(r):
+        pf = r["profit_factor"] if r["profit_factor"] != float("inf") else 99
+        enough = r["trades"] >= 30            # ignore tiny, unreliable samples
+        return (enough, pf, r["return_pct"])
+    rows.sort(key=key, reverse=True)
+    return rows
+
+
+def print_grid(rows: list[dict]) -> None:
+    if not rows:
+        print("Not enough data to optimize (need >=2 symbols with history).")
+        return
+    headers = ["min_score", "trend_filter", "trades", "win_rate_pct",
+               "profit_factor", "max_drawdown_pct", "return_pct", "expectancy_r"]
+    table = [[r[h] for h in headers] for r in rows]
+    print("\n=== Optimization (ranked; best first) ===")
+    try:
+        from tabulate import tabulate
+        print(tabulate(table, headers=headers, tablefmt="github"))
+    except ImportError:
+        print("\t".join(headers))
+        for row in table:
+            print("\t".join(str(x) for x in row))
+    best = rows[0]
+    print(f"\n>>> Best: min_score={best['min_score']} "
+          f"trend_filter={best['trend_filter']} "
+          f"(PF={best['profit_factor']}, return={best['return_pct']}%, "
+          f"{best['trades']} trades)\n")
 
 
 def print_report(results: list[BacktestResult]) -> None:

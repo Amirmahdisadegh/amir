@@ -25,6 +25,9 @@ scan:
 backtest:
 	.venv/bin/python main.py backtest
 
+optimize:
+	.venv/bin/python main.py optimize
+
 universe:
 	.venv/bin/python main.py universe
 

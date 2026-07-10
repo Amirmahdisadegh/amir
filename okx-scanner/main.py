@@ -17,7 +17,7 @@ import asyncio
 import logging
 import sys
 
-from okx_scanner.backtest import Backtester, print_report
+from okx_scanner.backtest import Backtester, grid_search, print_grid, print_report
 from okx_scanner.config import Config, load_config
 from okx_scanner.data import OkxData
 from okx_scanner.executor import Executor
@@ -63,6 +63,12 @@ async def cmd_backtest(cfg: Config) -> None:
     print_report(results)
 
 
+async def cmd_optimize(cfg: Config) -> None:
+    async with OkxData(cfg) as data:
+        rows = await grid_search(cfg, data)
+    print_grid(rows)
+
+
 async def cmd_scan(cfg: Config) -> None:
     notifier = TelegramNotifier(cfg.telegram, risk=cfg.risk)
     live = cfg.mode == "live"
@@ -100,7 +106,8 @@ async def cmd_scan(cfg: Config) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="OKX RTM Scanner")
-    parser.add_argument("command", choices=["scan", "backtest", "universe"],
+    parser.add_argument("command",
+                        choices=["scan", "backtest", "universe", "optimize"],
                         help="what to run")
     parser.add_argument("--config", default="config.yaml", help="config file path")
     parser.add_argument("--log", default="INFO", help="log level")
@@ -113,6 +120,7 @@ def main() -> None:
         "scan": cmd_scan,
         "backtest": cmd_backtest,
         "universe": cmd_universe,
+        "optimize": cmd_optimize,
     }[args.command]
 
     try:
