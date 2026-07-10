@@ -204,14 +204,42 @@ class Executor:
             return
 
         side = "buy" if plan.side is Side.LONG else "sell"
+
+        # markets must be loaded on THIS (trade) client to resolve the symbol
+        try:
+            await self.data.load_markets()
+            market = self.data.client.market(signal.symbol)
+        except Exception as e:
+            log.error("market lookup failed for %s: %s", signal.symbol, e)
+            await self.notifier.send_text(f"⚠️ Order skipped {signal.symbol}: {e}")
+            return
+
+        # OKX swaps are priced in CONTRACTS: convert base-currency size to contracts
+        contract_size = float(market.get("contractSize") or 1) or 1
+        amount_contracts = plan.size / contract_size
+        min_amt = (((market.get("limits") or {}).get("amount") or {}).get("min")) or 0
+        if min_amt and amount_contracts < min_amt:
+            msg = (f"skip {signal.symbol}: size {amount_contracts:.4f} < exchange "
+                   f"min {min_amt} (capital too small for this symbol)")
+            log.info(msg)
+            await self.notifier.send_text(f"↩️ {msg}")
+            return
+        try:
+            amount = float(self.data.client.amount_to_precision(
+                signal.symbol, amount_contracts))
+        except Exception:
+            amount = amount_contracts
+        if amount <= 0:
+            log.info("skip %s: rounded size is zero", signal.symbol)
+            return
+
         await self._set_leverage(signal.symbol, plan.leverage)
 
+        # ccxt-unified attached stop-loss / take-profit (maps to OKX algo orders)
         params = {
-            # OKX native attached stop-loss / take-profit (algo on the order)
-            "slTriggerPx": plan.stop_loss,
-            "slOrdPx": -1,                     # -1 => market stop when triggered
-            "tpTriggerPx": plan.take_profit,
-            "tpOrdPx": -1,
+            "tdMode": "cross",
+            "stopLoss": {"triggerPrice": plan.stop_loss, "type": "market"},
+            "takeProfit": {"triggerPrice": plan.take_profit, "type": "market"},
         }
 
         try:
@@ -219,7 +247,7 @@ class Executor:
                 symbol=signal.symbol,
                 type="limit",
                 side=side,
-                amount=plan.size,
+                amount=amount,
                 price=plan.entry,
                 params=params,
             )
@@ -232,12 +260,12 @@ class Executor:
 
         order_id = str(order.get("id", f"{signal.symbol}-{signal.bar_time}"))
         self.risk.register_open(order_id, plan)
-        log.info("placed %s %s size=%.6f entry=%.6f SL=%.6f TP=%.6f lev=%.1f",
-                 side, signal.symbol, plan.size, plan.entry,
+        log.info("placed %s %s amount=%.6f(contracts) entry=%.6f SL=%.6f TP=%.6f lev=%.1f",
+                 side, signal.symbol, amount, plan.entry,
                  plan.stop_loss, plan.take_profit, plan.leverage)
         await self.notifier.send_text(
             f"✅ Order placed {signal.symbol} {side.upper()} "
-            f"size={plan.size:.4f} @ {plan.entry:g}\n"
+            f"amount={amount:g} @ {plan.entry:g}\n"
             f"SL {plan.stop_loss:g} · TP {plan.take_profit:g} · risk "
             f"{plan.risk_amount:.2f} USDT"
         )
