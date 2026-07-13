@@ -45,9 +45,11 @@ struct ConnectionEditorView: View {
                 }
             }
             .onAppear {
-                baseURL = app.config.baseURL
-                username = app.config.username
-                password = app.config.password
+                baseURL = app.config.baseURL.isEmpty ? PanelConfig.default.baseURL : app.config.baseURL
+                username = app.config.username.isEmpty ? PanelConfig.default.username : app.config.username
+                // Fall back to the default password if a prior failed attempt left it blank,
+                // so the user never has to retype it just to reconnect.
+                password = app.config.password.isEmpty ? PanelConfig.default.password : app.config.password
             }
         }
         .preferredColorScheme(.dark)
