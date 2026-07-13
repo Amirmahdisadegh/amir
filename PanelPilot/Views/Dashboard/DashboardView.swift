@@ -30,6 +30,13 @@ struct DashboardView: View {
             .background(ScreenBackground())
             .scrollContentBackground(.hidden)
             .navigationTitle("dashboard.title".loc)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    RefreshButton(isLoading: store.isLoading) {
+                        Task { await store.refreshAll() }
+                    }
+                }
+            }
             .refreshable { await store.refreshAll() }
         }
     }

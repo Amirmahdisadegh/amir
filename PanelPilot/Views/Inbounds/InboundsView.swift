@@ -38,6 +38,13 @@ struct InboundsView: View {
             .background(ScreenBackground())
             .scrollContentBackground(.hidden)
             .navigationTitle("inbounds.title".loc)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    RefreshButton(isLoading: store.isLoading) {
+                        Task { await store.refreshAll() }
+                    }
+                }
+            }
             .navigationDestination(for: Int.self) { id in
                 if let inbound = store.inbound(withId: id) {
                     InboundDetailView(inboundId: inbound.id)

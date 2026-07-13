@@ -56,6 +56,13 @@ struct ClientsView: View {
             }
             .background(ScreenBackground())
             .navigationTitle("clients.title".loc)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    RefreshButton(isLoading: store.isLoading) {
+                        Task { await store.refreshAll() }
+                    }
+                }
+            }
             .navigationDestination(for: ClientRow.self) { row in
                 ClientDetailView(inboundId: row.inbound.id, clientId: row.client.id)
             }

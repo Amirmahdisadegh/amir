@@ -53,8 +53,10 @@ struct Inbound: Decodable, Identifiable, Hashable {
         listen = (try? c.decode(String.self, forKey: .listen)) ?? ""
         port = (try? c.decode(Int.self, forKey: .port)) ?? 0
         `protocol` = (try? c.decode(String.self, forKey: .protocol)) ?? ""
-        settingsRaw = (try? c.decode(String.self, forKey: .settings)) ?? "{}"
-        streamSettingsRaw = (try? c.decode(String.self, forKey: .streamSettings)) ?? "{}"
+        // Modern panels return settings/streamSettings as inline JSON objects;
+        // classic panels return them as JSON strings. Normalize both to a string.
+        settingsRaw = c.decodeJSONStringOrObject(.settings)
+        streamSettingsRaw = c.decodeJSONStringOrObject(.streamSettings)
         tag = (try? c.decode(String.self, forKey: .tag)) ?? ""
         clientStats = (try? c.decode([ClientStat].self, forKey: .clientStats)) ?? []
     }
@@ -74,7 +76,18 @@ struct Inbound: Decodable, Identifiable, Hashable {
     var settings: InboundSettings { InboundSettings.decode(from: settingsRaw) }
     var stream: StreamSettings { StreamSettings.decode(from: streamSettingsRaw) }
 
-    var clients: [Client] { settings.clients }
+    var clients: [Client] {
+        let fromSettings = settings.clients
+        if !fromSettings.isEmpty { return fromSettings }
+        // Fallback: some panels keep client config outside `settings`; synthesize
+        // a display list from the per-client traffic stats (email keyed).
+        return clientStats
+            .filter { !$0.email.isEmpty }
+            .map { stat in
+                Client(id: stat.email, email: stat.email, flow: "",
+                       totalGB: stat.total, expiryTime: stat.expiryTime, enable: stat.enable)
+            }
+    }
 
     var totalTraffic: Int64 { up + down }
 }

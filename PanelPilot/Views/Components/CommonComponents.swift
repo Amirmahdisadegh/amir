@@ -44,6 +44,30 @@ struct PrimaryButton: View {
     }
 }
 
+// MARK: - Refresh toolbar button
+
+/// A toolbar refresh button that spins while loading and re-fetches on tap.
+struct RefreshButton: View {
+    let isLoading: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            Haptics.tap()
+            action()
+        } label: {
+            if isLoading {
+                ProgressView().tint(Theme.accentCyan)
+            } else {
+                Image(systemName: "arrow.clockwise")
+                    .foregroundStyle(Theme.accentGradient)
+                    .fontWeight(.semibold)
+            }
+        }
+        .disabled(isLoading)
+    }
+}
+
 // MARK: - Filter chip
 
 struct FilterChip: View {
