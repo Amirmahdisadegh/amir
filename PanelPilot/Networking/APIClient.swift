@@ -73,6 +73,12 @@ actor APIClient {
                 req.setValue("\(scheme)://\(host)\(port)", forHTTPHeaderField: "Origin")
             }
         }
+        // Bearer API token is the panel's documented auth for programmatic
+        // clients — it authorizes every /panel/api/* endpoint and skips CSRF.
+        if config.usesToken {
+            let token = config.apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
     }
 
     // MARK: - Auth
@@ -81,6 +87,16 @@ actor APIClient {
     @discardableResult
     func login() async throws -> Bool {
         if mockMode { isLoggedIn = true; return true }
+
+        // Bearer-token mode: no cookie login. Verify the token with one
+        // authenticated call, then treat the actor as logged in.
+        if config.usesToken {
+            try await verifyToken()
+            isLoggedIn = true
+            KeychainStore.saveConfig(config)
+            return true
+        }
+
         guard let url = config.url("login") else { throw APIError.invalidURL }
 
         // Warm-up GET: browsers load the login page first, which sets any
@@ -178,24 +194,71 @@ actor APIClient {
 
         guard let http = response as? HTTPURLResponse else { throw APIError.panelUnreachable }
 
-        // Session expiry: 401 or the panel returning an HTML login page.
+        // Auth failure: 401/403 or the panel returning an HTML login page.
         let looksLikeLoginHTML = Self.isHTMLLogin(data: data, response: http)
-        if (http.statusCode == 401 || looksLikeLoginHTML) && !isRetry {
-            isLoggedIn = false
-            try await login()
-            return try await request(path: path, method: method, formBody: formBody,
-                                     jsonBody: jsonBody, decode: decode, isRetry: true)
-        }
-        if http.statusCode == 401 || looksLikeLoginHTML {
+        let authFailed = http.statusCode == 401 || http.statusCode == 403 || looksLikeLoginHTML
+
+        if authFailed {
+            if config.usesToken {
+                // A Bearer token was rejected — re-verifying it won't help.
+                throw APIError.invalidCredentials
+            }
+            if !isRetry {
+                isLoggedIn = false
+                try await login()
+                return try await request(path: path, method: method, formBody: formBody,
+                                         jsonBody: jsonBody, decode: decode, isRetry: true)
+            }
             throw APIError.sessionExpired
+        }
+
+        if http.statusCode >= 400 {
+            let snippet = String(data: data.prefix(220), encoding: .utf8)?
+                .replacingOccurrences(of: "\n", with: " ")
+                .trimmingCharacters(in: .whitespaces) ?? ""
+            throw APIError.server("HTTP \(http.statusCode) · \(url.absoluteString) · \(snippet)")
         }
 
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            let snippet = String(data: data.prefix(200), encoding: .utf8) ?? ""
+            let snippet = String(data: data.prefix(220), encoding: .utf8) ?? ""
             throw APIError.decoding(snippet)
         }
+    }
+
+    // MARK: - Token verification
+
+    /// Verify a Bearer token by hitting a lightweight authenticated endpoint.
+    /// Tolerant of the list endpoint being GET or POST — only an explicit
+    /// 401/403 means the token itself is bad.
+    private func verifyToken() async throws {
+        guard let url = config.url("panel/api/inbounds/list") else { throw APIError.invalidURL }
+        var lastError: APIError = .panelUnreachable
+        for method in ["GET", "POST"] {
+            var req = URLRequest(url: url)
+            req.httpMethod = method
+            applyBrowserHeaders(&req)
+            do {
+                let (data, response) = try await session.data(for: req)
+                guard let http = response as? HTTPURLResponse else {
+                    lastError = .panelUnreachable; continue
+                }
+                if http.statusCode == 401 || http.statusCode == 403 {
+                    throw APIError.invalidCredentials
+                }
+                if http.statusCode < 400 { return }   // authenticated successfully
+                let snippet = String(data: data.prefix(220), encoding: .utf8)?
+                    .replacingOccurrences(of: "\n", with: " ")
+                    .trimmingCharacters(in: .whitespaces) ?? ""
+                lastError = .server("HTTP \(http.statusCode) · \(url.absoluteString) · \(snippet)")
+            } catch let e as APIError {
+                throw e
+            } catch {
+                lastError = APIError.from(error)
+            }
+        }
+        throw lastError
     }
 
     private static func isHTMLLogin(data: Data, response: HTTPURLResponse) -> Bool {
@@ -214,8 +277,15 @@ actor APIClient {
 
     func fetchInbounds() async throws -> [Inbound] {
         if mockMode { return MockData.inbounds }
-        let env = try await request(path: "panel/api/inbounds/list",
+        // The list endpoint is a GET in 3x-ui; fall back to POST for older panels.
+        let env: APIEnvelope<[Inbound]>
+        do {
+            env = try await request(path: "panel/api/inbounds/list", method: "GET",
                                     decode: APIEnvelope<[Inbound]>.self)
+        } catch APIError.server {
+            env = try await request(path: "panel/api/inbounds/list", method: "POST",
+                                    decode: APIEnvelope<[Inbound]>.self)
+        }
         guard env.success else { throw APIError.server(env.msg ?? "Failed to load inbounds") }
         return env.obj ?? []
     }
@@ -229,12 +299,25 @@ actor APIClient {
 
     func fetchServerStatus() async throws -> ServerStatus {
         if mockMode { return MockData.serverStatus }
-        let env = try await request(path: "server/status",
-                                    decode: APIEnvelope<ServerStatus>.self)
-        guard let status = env.obj else {
-            throw APIError.server(env.msg ?? "No server status")
+        // This 3.x panel serves status under /panel/api (Bearer-authorized); classic
+        // panels expose POST /server/status. Try the former, then fall back.
+        let candidates: [(String, String)] = [
+            ("panel/api/server/status", "GET"),
+            ("panel/api/server/status", "POST"),
+            ("server/status", "POST")
+        ]
+        var lastError: Error = APIError.server("No server status")
+        for (path, method) in candidates {
+            do {
+                let env = try await request(path: path, method: method,
+                                            decode: APIEnvelope<ServerStatus>.self)
+                if let status = env.obj { return status }
+                lastError = APIError.server(env.msg ?? "No server status")
+            } catch {
+                lastError = error
+            }
         }
-        return status
+        throw lastError
     }
 
     // MARK: - Client mutations

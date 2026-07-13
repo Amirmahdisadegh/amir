@@ -9,6 +9,7 @@ struct ConnectionEditorView: View {
     @State private var baseURL = ""
     @State private var username = ""
     @State private var password = ""
+    @State private var apiToken = ""
     @State private var isSaving = false
     @State private var error: APIError?
 
@@ -25,13 +26,28 @@ struct ConnectionEditorView: View {
                             secure("setup.password".loc, text: $password)
                         }
                     }
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            secure("setup.api_token".loc, text: $apiToken)
+                            Text("setup.api_token_hint".loc)
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                     if let error {
-                        Label(error.errorDescription ?? "", systemImage: error.symbol)
-                            .font(.subheadline).foregroundStyle(Theme.expired)
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: error.symbol)
+                            Text(error.errorDescription ?? "")
+                                .fixedSize(horizontal: false, vertical: true)
+                                .textSelection(.enabled)
+                        }
+                        .font(.footnote).foregroundStyle(Theme.expired)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     PrimaryButton(title: "settings.reconnect".loc, systemImage: "bolt.fill",
                                   isLoading: isSaving,
-                                  isEnabled: !baseURL.isEmpty && !username.isEmpty) { save() }
+                                  isEnabled: !baseURL.isEmpty && (!username.isEmpty || !apiToken.isEmpty)) { save() }
                 }
                 .padding()
             }
@@ -50,6 +66,7 @@ struct ConnectionEditorView: View {
                 // Fall back to the default password if a prior failed attempt left it blank,
                 // so the user never has to retype it just to reconnect.
                 password = app.config.password.isEmpty ? PanelConfig.default.password : app.config.password
+                apiToken = app.config.apiToken
             }
         }
         .preferredColorScheme(.dark)
@@ -70,14 +87,17 @@ struct ConnectionEditorView: View {
         VStack(alignment: .leading, spacing: 6) {
             Label(title, systemImage: "lock")
                 .font(.caption.weight(.medium)).foregroundStyle(Theme.textSecondary)
-            SecureField("", text: text).foregroundStyle(Theme.textPrimary)
+            SecureField("", text: text)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .foregroundStyle(Theme.textPrimary)
         }
     }
 
     private func save() {
         error = nil
         isSaving = true
-        let config = PanelConfig(baseURL: baseURL, username: username, password: password)
+        let config = PanelConfig(baseURL: baseURL, username: username,
+                                 password: password, apiToken: apiToken)
         Task {
             do {
                 try await app.updateConnection(config)

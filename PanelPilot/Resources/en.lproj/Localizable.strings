@@ -36,6 +36,8 @@
 "setup.connecting" = "Connecting…";
 "setup.allow_insecure" = "Allow insecure TLS";
 "setup.allow_insecure_hint" = "Enable if your panel uses a self-signed certificate.";
+"setup.api_token" = "API Token (recommended)";
+"setup.api_token_hint" = "In the panel: Settings → Security → API Token. This is the reliable way to connect — it works for every API call and avoids login/CSRF issues. Leave username/password as-is; the token is used when present.";
 
 /* Dashboard */
 "dashboard.title" = "Dashboard";

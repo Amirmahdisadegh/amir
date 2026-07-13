@@ -5,6 +5,28 @@ struct PanelConfig: Codable, Equatable {
     var baseURL: String
     var username: String
     var password: String
+    /// Optional Bearer API token (Settings → Security → API Token in the panel).
+    /// When present it is the preferred auth: it works for every /panel/api/*
+    /// endpoint and skips the CSRF flow that a cookie session requires.
+    var apiToken: String
+
+    init(baseURL: String, username: String, password: String, apiToken: String = "") {
+        self.baseURL = baseURL
+        self.username = username
+        self.password = password
+        self.apiToken = apiToken
+    }
+
+    // Decode leniently so configs saved by older builds (without apiToken) still load.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        baseURL = (try? c.decode(String.self, forKey: .baseURL)) ?? ""
+        username = (try? c.decode(String.self, forKey: .username)) ?? ""
+        password = (try? c.decode(String.self, forKey: .password)) ?? ""
+        apiToken = (try? c.decode(String.self, forKey: .apiToken)) ?? ""
+    }
+
+    var usesToken: Bool { !apiToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     /// Pre-configured defaults for the owner's panel. Editable in Settings.
     static let `default` = PanelConfig(

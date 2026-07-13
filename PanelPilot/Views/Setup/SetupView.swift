@@ -7,6 +7,7 @@ struct SetupView: View {
     @State private var baseURL = PanelConfig.default.baseURL
     @State private var username = PanelConfig.default.username
     @State private var password = PanelConfig.default.password
+    @State private var apiToken = ""
     @State private var allowInsecure = false
     @State private var isConnecting = false
     @State private var error: APIError?
@@ -25,6 +26,16 @@ struct SetupView: View {
                               symbol: "person", keyboard: .default)
                         Divider().overlay(Theme.cardStroke)
                         secureField(title: "setup.password".loc, text: $password)
+                    }
+                }
+
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        secureField(title: "setup.api_token".loc, text: $apiToken)
+                        Text("setup.api_token_hint".loc)
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -58,7 +69,7 @@ struct SetupView: View {
                     title: isConnecting ? "setup.connecting".loc : "setup.connect".loc,
                     systemImage: "bolt.fill",
                     isLoading: isConnecting,
-                    isEnabled: !baseURL.isEmpty && !username.isEmpty
+                    isEnabled: !baseURL.isEmpty && (!username.isEmpty || !apiToken.isEmpty)
                 ) { connect() }
             }
             .padding()
@@ -101,6 +112,8 @@ struct SetupView: View {
                 .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
             SecureField("", text: text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
                 .foregroundStyle(Theme.textPrimary)
         }
     }
@@ -109,7 +122,8 @@ struct SetupView: View {
         error = nil
         isConnecting = true
         app.allowInsecureTLS = allowInsecure
-        let config = PanelConfig(baseURL: baseURL, username: username, password: password)
+        let config = PanelConfig(baseURL: baseURL, username: username,
+                                 password: password, apiToken: apiToken)
         Task {
             do {
                 try await app.connect(with: config)
