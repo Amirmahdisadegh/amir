@@ -14,16 +14,34 @@ struct PanelConfig: Codable, Equatable {
     )
 
     /// Normalised base URL guaranteed to end with a single trailing slash.
+    ///
+    /// Login and the API live at `{base}` (the secret web-base-path), while the
+    /// web UI a user copies from the browser lives under `{base}/panel/...`
+    /// (e.g. `/panel/clients`, `/panel/inbounds`). We parse the URL and drop the
+    /// `panel` path segment and everything after it, so pasting *any* panel page
+    /// URL still resolves the API correctly.
     var normalizedBase: String {
-        var s = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        while s.hasSuffix("/") { s.removeLast() }
-        // Users often paste the browser address, which ends at the web UI
-        // ({base}/panel). Login and the API actually live at {base}, so drop a
-        // trailing "/panel" segment if present — the app works either way.
-        if s.lowercased().hasSuffix("/panel") {
-            s = String(s.dropLast("/panel".count))
-            while s.hasSuffix("/") { s.removeLast() }
+        let raw = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if var comps = URLComponents(string: raw), comps.host != nil {
+            var segments = comps.path
+                .split(separator: "/", omittingEmptySubsequences: true)
+                .map(String.init)
+            if let idx = segments.firstIndex(where: { $0.lowercased() == "panel" }) {
+                segments = Array(segments.prefix(idx))
+            }
+            comps.path = segments.isEmpty ? "" : "/" + segments.joined(separator: "/")
+            comps.query = nil
+            comps.fragment = nil
+            if var s = comps.string {
+                while s.hasSuffix("/") { s.removeLast() }
+                return s + "/"
+            }
         }
+
+        // Fallback for strings URLComponents can't parse.
+        var s = raw
+        while s.hasSuffix("/") { s.removeLast() }
         return s + "/"
     }
 
