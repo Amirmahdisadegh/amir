@@ -181,13 +181,12 @@ actor APIClient {
                 KeychainStore.saveConfig(config)
                 return true
             }
-            // Panel replied with JSON but rejected the request — show its real message
-            // so genuine bad credentials are distinguishable from other server errors.
+            // Panel replied with JSON but rejected the request — show its exact
+            // message so "wrong password" is distinguishable from 2FA-required,
+            // an empty body, or any other server-side reason.
             let msg = (env.msg ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let lower = msg.lowercased()
-            if lower.contains("password") || lower.contains("username")
-                || lower.contains("رمز") || lower.contains("کاربر") || msg.isEmpty {
-                throw APIError.invalidCredentials
+            if msg.isEmpty {
+                throw APIError.server("Login rejected · empty msg · [csrf:\(csrfToken != nil ? "ok" : "none")]")
             }
             throw APIError.server(msg)
         }
