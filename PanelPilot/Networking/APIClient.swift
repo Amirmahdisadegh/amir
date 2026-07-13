@@ -196,10 +196,11 @@ actor APIClient {
 
         // Non-JSON body: surface the status + a snippet so we can see what the panel returned
         // (HTML login page, redirect, Cloudflare challenge, wrong base path, etc.).
+        // Include whether a CSRF token was obtained, to diagnose the 403 path.
         let snippet = String(data: data.prefix(300), encoding: .utf8)?
             .replacingOccurrences(of: "\n", with: " ")
             .trimmingCharacters(in: .whitespaces) ?? "<binary>"
-        throw APIError.server("HTTP \(http.statusCode) · \(config.url("login")?.absoluteString ?? "") · \(snippet)")
+        throw APIError.server("HTTP \(http.statusCode) [csrf:\(csrfToken != nil ? "ok" : "none")] · \(snippet)")
     }
 
     // MARK: - Core request with transparent re-login
