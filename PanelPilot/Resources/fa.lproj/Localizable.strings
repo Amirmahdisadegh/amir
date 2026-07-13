@@ -1,0 +1,158 @@
+/* Tabs */
+"tab.dashboard" = "داشبورد";
+"tab.inbounds" = "ورودی‌ها";
+"tab.clients" = "کاربران";
+"tab.settings" = "تنظیمات";
+
+/* Common */
+"common.unlimited" = "نامحدود";
+"common.never" = "هرگز";
+"common.cancel" = "انصراف";
+"common.save" = "ذخیره";
+"common.delete" = "حذف";
+"common.done" = "تمام";
+"common.retry" = "تلاش دوباره";
+"common.close" = "بستن";
+"common.online" = "آنلاین";
+"common.offline" = "آفلاین";
+"common.enabled" = "فعال";
+"common.disabled" = "غیرفعال";
+"common.copied" = "کپی شد";
+"common.copy" = "کپی";
+"common.share" = "اشتراک‌گذاری";
+"common.loading" = "در حال بارگذاری…";
+"common.updated" = "به‌روزرسانی %@";
+"common.all" = "همه";
+"common.yes" = "بله";
+"common.no" = "خیر";
+
+/* Setup / login */
+"setup.title" = "اتصال به پنل";
+"setup.subtitle" = "پنل‌پایلوت سرور 3x-ui شما را مدیریت می‌کند. اطلاعات ورود شما به‌صورت امن در Keychain ذخیره می‌شود.";
+"setup.base_url" = "آدرس پنل";
+"setup.username" = "نام کاربری";
+"setup.password" = "رمز عبور";
+"setup.connect" = "اتصال";
+"setup.connecting" = "در حال اتصال…";
+"setup.allow_insecure" = "اجازهٔ TLS ناامن";
+"setup.allow_insecure_hint" = "اگر پنل شما از گواهی خودامضا استفاده می‌کند فعال کنید.";
+
+/* Dashboard */
+"dashboard.title" = "داشبورد";
+"dashboard.system" = "سیستم";
+"dashboard.cpu" = "پردازنده";
+"dashboard.memory" = "حافظه";
+"dashboard.disk" = "دیسک";
+"dashboard.xray" = "Xray";
+"dashboard.uptime" = "مدت روشن بودن";
+"dashboard.network" = "شبکه";
+"dashboard.upload" = "آپلود";
+"dashboard.download" = "دانلود";
+"dashboard.speed" = "سرعت لحظه‌ای";
+"dashboard.total_clients" = "کل کاربران";
+"dashboard.online_now" = "آنلاین اکنون";
+"dashboard.inbounds_count" = "ورودی‌ها";
+"dashboard.total_traffic" = "کل ترافیک";
+"dashboard.traffic_chart" = "پهنای باند شبکه";
+"dashboard.no_samples" = "در حال جمع‌آوری داده‌ها…";
+"dashboard.connections" = "اتصالات";
+"dashboard.running" = "در حال اجرا";
+"dashboard.stopped" = "متوقف";
+
+/* Inbounds */
+"inbounds.title" = "ورودی‌ها";
+"inbounds.empty" = "ورودی‌ای یافت نشد";
+"inbounds.empty_hint" = "برای شروع در پنل 3x-ui یک ورودی بسازید.";
+"inbounds.clients_count" = "%d کاربر";
+"inbounds.port" = "پورت %@";
+"inbounds.traffic" = "ترافیک";
+"inbounds.up" = "↑ %@";
+"inbounds.down" = "↓ %@";
+
+/* Clients */
+"clients.title" = "کاربران";
+"clients.all_inbounds" = "همهٔ ورودی‌ها";
+"clients.search" = "جست‌وجو بر اساس نام";
+"clients.empty" = "کاربری وجود ندارد";
+"clients.empty_hint" = "برای اشتراک دسترسی، به این ورودی کاربر اضافه کنید.";
+"clients.add" = "افزودن کاربر";
+"clients.count" = "%d کاربر";
+"clients.filter.online" = "آنلاین";
+"clients.filter.expiring" = "درحال انقضا";
+"clients.filter.over80" = "بیش از ۸۰٪";
+"clients.filter.disabled" = "غیرفعال";
+
+/* Client detail / editor */
+"client.expired" = "منقضی شده";
+"client.expires_today" = "امروز منقضی می‌شود";
+"client.days_left" = "%d روز مانده";
+"client.email" = "نام / ایمیل";
+"client.uuid" = "شناسه (UUID)";
+"client.traffic_limit" = "محدودیت ترافیک (گیگابایت)";
+"client.expiry_days" = "انقضا (روز از اکنون)";
+"client.expiry_date" = "انقضا";
+"client.flow" = "Flow";
+"client.enable" = "فعال";
+"client.reset_traffic" = "صفر کردن ترافیک";
+"client.toggle" = "تغییر وضعیت";
+"client.delete_confirm_title" = "حذف کاربر؟";
+"client.delete_confirm_msg" = "این کار %@ را برای همیشه از ورودی حذف می‌کند.";
+"client.reset_confirm_title" = "صفر کردن ترافیک؟";
+"client.reset_confirm_msg" = "شمارندهٔ ترافیک %@ صفر خواهد شد.";
+"client.new_title" = "کاربر جدید";
+"client.edit_title" = "ویرایش کاربر";
+"client.usage" = "مصرف";
+"client.share_config" = "اشتراک‌گذاری پیکربندی";
+"client.connection_uri" = "لینک اتصال";
+"client.scan_qr" = "برای افزودن به برنامهٔ کلاینت، اسکن کنید.";
+"client.regenerate_uuid" = "ساخت شناسهٔ جدید";
+"client.unlimited_hint" = "۰ = نامحدود";
+"client.no_expiry_hint" = "۰ = بدون انقضا";
+"client.online_badge" = "آنلاین";
+
+/* Settings */
+"settings.title" = "تنظیمات";
+"settings.connection" = "اتصال";
+"settings.security" = "امنیت";
+"settings.appearance" = "ظاهر";
+"settings.about" = "درباره";
+"settings.edit_panel" = "اتصال پنل";
+"settings.language" = "زبان";
+"settings.face_id" = "باز کردن با Face ID / Touch ID";
+"settings.allow_insecure" = "اجازهٔ TLS ناامن";
+"settings.mock_mode" = "حالت نمایشی (دادهٔ ساختگی)";
+"settings.mock_hint" = "بدون نیاز به سرور، برنامه را با دادهٔ ساختگی ببینید.";
+"settings.reconnect" = "اتصال مجدد";
+"settings.logout" = "خروج";
+"settings.logout_confirm" = "اطلاعات ذخیره‌شده حذف و به صفحهٔ اتصال بازگردید؟";
+"settings.version" = "نسخه";
+"settings.made_with" = "یک کلاینت بومی برای پنل‌های 3x-ui.";
+"settings.test_connection" = "آزمایش اتصال";
+"settings.connection_ok" = "اتصال موفق بود";
+
+/* Language */
+"language.system" = "پیش‌فرض سیستم";
+
+/* Biometric */
+"biometric.reason" = "باز کردن پنل‌پایلوت";
+"biometric.use_passcode" = "استفاده از رمز عبور";
+"biometric.locked" = "پنل‌پایلوت قفل است";
+"biometric.unlock" = "باز کردن قفل";
+
+/* Errors */
+"error.title" = "مشکلی پیش آمد";
+"error.not_configured" = "پنل هنوز پیکربندی نشده است.";
+"error.invalid_url" = "آدرس پنل نامعتبر است.";
+"error.invalid_credentials" = "نام کاربری یا رمز عبور اشتباه است.";
+"error.session_expired" = "نشست منقضی شد. دوباره وارد شوید.";
+"error.unreachable" = "پنل در دسترس نیست. آدرس و اتصال خود را بررسی کنید.";
+"error.timeout" = "زمان درخواست به پایان رسید.";
+"error.tls" = "خطای گواهی TLS. اگر پنل از گواهی خودامضا استفاده می‌کند، «اجازهٔ TLS ناامن» را در تنظیمات فعال کنید.";
+"error.decoding" = "پاسخ غیرمنتظره:";
+
+/* Toasts */
+"toast.client_added" = "کاربر افزوده شد";
+"toast.client_updated" = "کاربر به‌روزرسانی شد";
+"toast.client_deleted" = "کاربر حذف شد";
+"toast.traffic_reset" = "ترافیک صفر شد";
+"toast.saved" = "ذخیره شد";

@@ -1,0 +1,158 @@
+/* Tabs */
+"tab.dashboard" = "Dashboard";
+"tab.inbounds" = "Inbounds";
+"tab.clients" = "Clients";
+"tab.settings" = "Settings";
+
+/* Common */
+"common.unlimited" = "Unlimited";
+"common.never" = "Never";
+"common.cancel" = "Cancel";
+"common.save" = "Save";
+"common.delete" = "Delete";
+"common.done" = "Done";
+"common.retry" = "Retry";
+"common.close" = "Close";
+"common.online" = "Online";
+"common.offline" = "Offline";
+"common.enabled" = "Enabled";
+"common.disabled" = "Disabled";
+"common.copied" = "Copied";
+"common.copy" = "Copy";
+"common.share" = "Share";
+"common.loading" = "Loading…";
+"common.updated" = "Updated %@";
+"common.all" = "All";
+"common.yes" = "Yes";
+"common.no" = "No";
+
+/* Setup / login */
+"setup.title" = "Connect your panel";
+"setup.subtitle" = "PanelPilot manages your 3x-ui server. Your credentials are stored securely in the Keychain.";
+"setup.base_url" = "Panel URL";
+"setup.username" = "Username";
+"setup.password" = "Password";
+"setup.connect" = "Connect";
+"setup.connecting" = "Connecting…";
+"setup.allow_insecure" = "Allow insecure TLS";
+"setup.allow_insecure_hint" = "Enable if your panel uses a self-signed certificate.";
+
+/* Dashboard */
+"dashboard.title" = "Dashboard";
+"dashboard.system" = "System";
+"dashboard.cpu" = "CPU";
+"dashboard.memory" = "Memory";
+"dashboard.disk" = "Disk";
+"dashboard.xray" = "Xray";
+"dashboard.uptime" = "Uptime";
+"dashboard.network" = "Network";
+"dashboard.upload" = "Upload";
+"dashboard.download" = "Download";
+"dashboard.speed" = "Live speed";
+"dashboard.total_clients" = "Total clients";
+"dashboard.online_now" = "Online now";
+"dashboard.inbounds_count" = "Inbounds";
+"dashboard.total_traffic" = "Total traffic";
+"dashboard.traffic_chart" = "Network throughput";
+"dashboard.no_samples" = "Collecting live samples…";
+"dashboard.connections" = "Connections";
+"dashboard.running" = "Running";
+"dashboard.stopped" = "Stopped";
+
+/* Inbounds */
+"inbounds.title" = "Inbounds";
+"inbounds.empty" = "No inbounds found";
+"inbounds.empty_hint" = "Create an inbound in your 3x-ui panel to get started.";
+"inbounds.clients_count" = "%d clients";
+"inbounds.port" = "Port %@";
+"inbounds.traffic" = "Traffic";
+"inbounds.up" = "↑ %@";
+"inbounds.down" = "↓ %@";
+
+/* Clients */
+"clients.title" = "Clients";
+"clients.all_inbounds" = "All inbounds";
+"clients.search" = "Search by name";
+"clients.empty" = "No clients";
+"clients.empty_hint" = "Add a client to this inbound to share access.";
+"clients.add" = "Add client";
+"clients.count" = "%d clients";
+"clients.filter.online" = "Online";
+"clients.filter.expiring" = "Expiring soon";
+"clients.filter.over80" = "Over 80%";
+"clients.filter.disabled" = "Disabled";
+
+/* Client detail / editor */
+"client.expired" = "Expired";
+"client.expires_today" = "Expires today";
+"client.days_left" = "%d days left";
+"client.email" = "Name / Email";
+"client.uuid" = "UUID";
+"client.traffic_limit" = "Traffic limit (GB)";
+"client.expiry_days" = "Expiry (days from now)";
+"client.expiry_date" = "Expires";
+"client.flow" = "Flow";
+"client.enable" = "Enabled";
+"client.reset_traffic" = "Reset traffic";
+"client.toggle" = "Toggle";
+"client.delete_confirm_title" = "Delete client?";
+"client.delete_confirm_msg" = "This permanently removes %@ from the inbound.";
+"client.reset_confirm_title" = "Reset traffic?";
+"client.reset_confirm_msg" = "Traffic counters for %@ will be set to zero.";
+"client.new_title" = "New client";
+"client.edit_title" = "Edit client";
+"client.usage" = "Usage";
+"client.share_config" = "Share configuration";
+"client.connection_uri" = "Connection URI";
+"client.scan_qr" = "Scan to import into your client app.";
+"client.regenerate_uuid" = "Generate new UUID";
+"client.unlimited_hint" = "0 = unlimited";
+"client.no_expiry_hint" = "0 = never expires";
+"client.online_badge" = "online";
+
+/* Settings */
+"settings.title" = "Settings";
+"settings.connection" = "Connection";
+"settings.security" = "Security";
+"settings.appearance" = "Appearance";
+"settings.about" = "About";
+"settings.edit_panel" = "Panel connection";
+"settings.language" = "Language";
+"settings.face_id" = "Unlock with Face ID / Touch ID";
+"settings.allow_insecure" = "Allow insecure TLS";
+"settings.mock_mode" = "Demo mode (mock data)";
+"settings.mock_hint" = "Explore the app with fake data — no server required.";
+"settings.reconnect" = "Reconnect";
+"settings.logout" = "Sign out";
+"settings.logout_confirm" = "Remove stored credentials and return to setup?";
+"settings.version" = "Version";
+"settings.made_with" = "A native client for 3x-ui panels.";
+"settings.test_connection" = "Test connection";
+"settings.connection_ok" = "Connection successful";
+
+/* Language */
+"language.system" = "System default";
+
+/* Biometric */
+"biometric.reason" = "Unlock PanelPilot";
+"biometric.use_passcode" = "Use passcode";
+"biometric.locked" = "PanelPilot is locked";
+"biometric.unlock" = "Unlock";
+
+/* Errors */
+"error.title" = "Something went wrong";
+"error.not_configured" = "Panel is not configured yet.";
+"error.invalid_url" = "The panel URL is invalid.";
+"error.invalid_credentials" = "Wrong username or password.";
+"error.session_expired" = "Session expired. Please sign in again.";
+"error.unreachable" = "Panel unreachable. Check the URL and your connection.";
+"error.timeout" = "The request timed out.";
+"error.tls" = "TLS certificate error. Enable ‘Allow insecure TLS’ in Settings if this panel uses a self-signed certificate.";
+"error.decoding" = "Unexpected response:";
+
+/* Toasts */
+"toast.client_added" = "Client added";
+"toast.client_updated" = "Client updated";
+"toast.client_deleted" = "Client deleted";
+"toast.traffic_reset" = "Traffic reset";
+"toast.saved" = "Saved";
