@@ -379,6 +379,31 @@ struct ServerStatus: Decodable {
     var xrayRunning: Bool { xrayState.lowercased() == "running" }
 }
 
+// MARK: - Online client entry
+
+/// An entry from `/panel/api/inbounds/onlines` when the panel returns objects
+/// instead of plain email strings. Reads the email from any common key.
+struct OnlineEntry: Decodable {
+    let email: String?
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: DynamicKey.self)
+        for key in ["email", "clientEmail", "name", "user"] {
+            if let k = DynamicKey(stringValue: key),
+               let v = try? c.decode(String.self, forKey: k), !v.isEmpty {
+                email = v
+                return
+            }
+        }
+        email = nil
+    }
+    private struct DynamicKey: CodingKey {
+        var stringValue: String
+        var intValue: Int? { nil }
+        init?(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) { nil }
+    }
+}
+
 // MARK: - JSON value helper
 
 /// A minimal, lossless JSON value used to re-serialize fields a panel may return

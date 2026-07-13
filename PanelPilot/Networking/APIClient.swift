@@ -359,9 +359,26 @@ actor APIClient {
 
     func fetchOnlineClients() async throws -> [String] {
         if mockMode { return MockData.onlineEmails }
-        let env = try await request(path: "panel/api/inbounds/onlines",
-                                    decode: APIEnvelope<[String]>.self)
-        return env.obj ?? []
+        // Panels differ: onlines may be POST or GET, and the payload may be a
+        // list of email strings or a list of objects ({email|clientEmail|...}).
+        for method in ["POST", "GET"] {
+            // Shape 1: obj is [String]
+            if let env = try? await request(path: "panel/api/inbounds/onlines",
+                                            method: method,
+                                            decode: APIEnvelope<[String]>.self),
+               let obj = env.obj, !obj.isEmpty {
+                return obj
+            }
+            // Shape 2: obj is [ { email: ... } ]
+            if let env = try? await request(path: "panel/api/inbounds/onlines",
+                                            method: method,
+                                            decode: APIEnvelope<[OnlineEntry]>.self),
+               let obj = env.obj {
+                let emails = obj.compactMap { $0.email }.filter { !$0.isEmpty }
+                if !emails.isEmpty { return emails }
+            }
+        }
+        return []
     }
 
     func fetchServerStatus() async throws -> ServerStatus {
