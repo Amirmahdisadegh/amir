@@ -10,6 +10,7 @@ struct ConnectionEditorView: View {
     @State private var username = ""
     @State private var password = ""
     @State private var apiToken = ""
+    @State private var twoFactor = ""
     @State private var isSaving = false
     @State private var error: APIError?
 
@@ -24,6 +25,15 @@ struct ConnectionEditorView: View {
                             field("setup.username".loc, symbol: "person", text: $username, keyboard: .default)
                             Divider().overlay(Theme.cardStroke)
                             secure("setup.password".loc, text: $password)
+                            Divider().overlay(Theme.cardStroke)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Label("setup.two_factor".loc, systemImage: "lock.rotation")
+                                    .font(.caption.weight(.medium)).foregroundStyle(Theme.textSecondary)
+                                TextField("", text: $twoFactor)
+                                    .keyboardType(.numberPad).foregroundStyle(Theme.textPrimary)
+                                Text("setup.two_factor_hint".loc)
+                                    .font(.caption2).foregroundStyle(Theme.textTertiary)
+                            }
                         }
                     }
                     GlassCard {
@@ -100,7 +110,7 @@ struct ConnectionEditorView: View {
                                  password: password, apiToken: apiToken)
         Task {
             do {
-                try await app.updateConnection(config)
+                try await app.updateConnection(config, twoFactorCode: twoFactor)
                 toast = ToastData(message: "settings.connection_ok".loc)
                 Haptics.success()
                 dismiss()

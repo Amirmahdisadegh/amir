@@ -8,6 +8,7 @@ struct SetupView: View {
     @State private var username = PanelConfig.default.username
     @State private var password = PanelConfig.default.password
     @State private var apiToken = ""
+    @State private var twoFactor = ""
     @State private var allowInsecure = false
     @State private var isConnecting = false
     @State private var error: APIError?
@@ -26,6 +27,17 @@ struct SetupView: View {
                               symbol: "person", keyboard: .default)
                         Divider().overlay(Theme.cardStroke)
                         secureField(title: "setup.password".loc, text: $password)
+                        Divider().overlay(Theme.cardStroke)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("setup.two_factor".loc, systemImage: "lock.rotation")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(Theme.textSecondary)
+                            TextField("", text: $twoFactor)
+                                .keyboardType(.numberPad)
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("setup.two_factor_hint".loc)
+                                .font(.caption2).foregroundStyle(Theme.textTertiary)
+                        }
                     }
                 }
 
@@ -126,7 +138,7 @@ struct SetupView: View {
                                  password: password, apiToken: apiToken)
         Task {
             do {
-                try await app.connect(with: config)
+                try await app.connect(with: config, twoFactorCode: twoFactor)
                 Haptics.success()
             } catch {
                 self.error = APIError.from(error)

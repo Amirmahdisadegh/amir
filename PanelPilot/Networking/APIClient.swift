@@ -12,6 +12,8 @@ actor APIClient {
     private var isLoggedIn = false
     /// CSRF token this panel requires on unsafe (POST) cookie-session requests.
     private var csrfToken: String?
+    /// Ephemeral two-factor / OTP code to include on the next login, if the panel has 2FA on.
+    private var twoFactorCode: String?
 
     // Mock mode short-circuits every request with fake data (used by previews).
     var mockMode: Bool = false
@@ -58,6 +60,12 @@ actor APIClient {
     }
 
     func setMockMode(_ on: Bool) { mockMode = on }
+
+    /// Provide a two-factor / OTP code to use on the next login (cleared on config change).
+    func setTwoFactorCode(_ code: String?) {
+        let trimmed = code?.trimmingCharacters(in: .whitespacesAndNewlines)
+        twoFactorCode = (trimmed?.isEmpty ?? true) ? nil : trimmed
+    }
 
     /// Make requests look like they come from the panel's own web UI, so a
     /// reverse proxy / Cloudflare / WAF in front of the panel doesn't reject
@@ -157,49 +165,63 @@ actor APIClient {
         // then submit the login POST carrying it in the X-CSRF-Token header.
         await refreshCSRFToken()
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        applyBrowserHeaders(&request)
-        let body = "username=\(config.username.formURLEncoded)&password=\(config.password.formURLEncoded)"
-        request.httpBody = body.data(using: .utf8)
+        // Modern 3x-ui (OAS 3.0) expects a JSON login body; classic panels use
+        // form-encoding. Try JSON first, then form, so either version works.
+        var lastData = Data()
+        var lastStatus = 0
+        for asJSON in [true, false] {
+            let (data, http): (Data, HTTPURLResponse)
+            do {
+                (data, http) = try await postLogin(url: url, json: asJSON)
+            } catch {
+                throw APIError.from(error)
+            }
+            lastData = data; lastStatus = http.statusCode
 
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch {
-            throw APIError.from(error)
-        }
-
-        guard let http = response as? HTTPURLResponse else { throw APIError.panelUnreachable }
-
-        if let env = try? JSONDecoder().decode(APIStatusEnvelope.self, from: data) {
-            if env.success {
+            if let env = try? JSONDecoder().decode(APIStatusEnvelope.self, from: data), env.success {
                 isLoggedIn = true
-                // The authenticated session gets a fresh CSRF token for API calls.
-                await refreshCSRFToken()
+                await refreshCSRFToken()   // fresh CSRF for the authenticated session
                 KeychainStore.saveConfig(config)
                 return true
             }
-            // Panel replied with JSON but rejected the request — show its exact
-            // message so "wrong password" is distinguishable from 2FA-required,
-            // an empty body, or any other server-side reason.
-            let msg = (env.msg ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if msg.isEmpty {
-                throw APIError.server("Login rejected · empty msg · [csrf:\(csrfToken != nil ? "ok" : "none")]")
-            }
-            throw APIError.server(msg)
         }
 
-        if http.statusCode == 401 { throw APIError.invalidCredentials }
-
-        // Non-JSON body: surface the status + a snippet so we can see what the panel returned
-        // (HTML login page, redirect, Cloudflare challenge, wrong base path, etc.).
-        // Include whether a CSRF token was obtained, to diagnose the 403 path.
-        let snippet = String(data: data.prefix(300), encoding: .utf8)?
+        // Both attempts failed — report the panel's own words.
+        if let env = try? JSONDecoder().decode(APIStatusEnvelope.self, from: lastData),
+           let msg = env.msg?.trimmingCharacters(in: .whitespacesAndNewlines), !msg.isEmpty {
+            throw APIError.server(msg)
+        }
+        if lastStatus == 401 { throw APIError.invalidCredentials }
+        let snippet = String(data: lastData.prefix(300), encoding: .utf8)?
             .replacingOccurrences(of: "\n", with: " ")
             .trimmingCharacters(in: .whitespaces) ?? "<binary>"
-        throw APIError.server("HTTP \(http.statusCode) [csrf:\(csrfToken != nil ? "ok" : "none")] · \(snippet)")
+        throw APIError.server("HTTP \(lastStatus) [csrf:\(csrfToken != nil ? "ok" : "none")] · \(snippet)")
+    }
+
+    /// Submit the login POST as either JSON or form-encoded, including an
+    /// optional two-factor code under several field names panels use.
+    private func postLogin(url: URL, json: Bool) async throws -> (Data, HTTPURLResponse) {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        applyBrowserHeaders(&request)
+        let code = twoFactorCode?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if json {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            var payload: [String: Any] = ["username": config.username, "password": config.password]
+            if !code.isEmpty {
+                payload["twoFactorCode"] = code
+                payload["loginSecret"] = code
+            }
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+        } else {
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            var body = "username=\(config.username.formURLEncoded)&password=\(config.password.formURLEncoded)"
+            if !code.isEmpty { body += "&twoFactorCode=\(code.formURLEncoded)&loginSecret=\(code.formURLEncoded)" }
+            request.httpBody = body.data(using: .utf8)
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError.panelUnreachable }
+        return (data, http)
     }
 
     // MARK: - Core request with transparent re-login

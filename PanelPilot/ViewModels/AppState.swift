@@ -61,10 +61,11 @@ final class AppState {
     }
 
     /// Attempt initial login from the setup screen.
-    func connect(with newConfig: PanelConfig) async throws {
+    func connect(with newConfig: PanelConfig, twoFactorCode: String = "") async throws {
         config = newConfig
         await APIClient.shared.setInsecureTLS(allowInsecureTLS)
         await APIClient.shared.updateConfig(newConfig)
+        await APIClient.shared.setTwoFactorCode(twoFactorCode)
         try await APIClient.shared.login()
         // Success — persist and move on.
         KeychainStore.saveConfig(newConfig)
@@ -73,9 +74,10 @@ final class AppState {
     }
 
     /// Update the panel connection from Settings, forcing a fresh login.
-    func updateConnection(_ newConfig: PanelConfig) async throws {
+    func updateConnection(_ newConfig: PanelConfig, twoFactorCode: String = "") async throws {
         config = newConfig
         await APIClient.shared.updateConfig(newConfig)
+        await APIClient.shared.setTwoFactorCode(twoFactorCode)
         try await APIClient.shared.login()
         KeychainStore.saveConfig(newConfig)
         await store.refreshAll()

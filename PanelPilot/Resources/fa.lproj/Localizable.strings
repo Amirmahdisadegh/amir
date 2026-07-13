@@ -36,6 +36,8 @@
 "setup.connecting" = "در حال اتصال…";
 "setup.allow_insecure" = "اجازهٔ TLS ناامن";
 "setup.allow_insecure_hint" = "اگر پنل شما از گواهی خودامضا استفاده می‌کند فعال کنید.";
+"setup.two_factor" = "کد دو مرحله‌ای (فقط اگر 2FA روشن است)";
+"setup.two_factor_hint" = "اگر ورود دو مرحله‌ای پنل روشن نیست، خالی بگذار.";
 "setup.api_token" = "توکن API (پیشنهادی)";
 "setup.api_token_hint" = "در پنل: Settings → Security → API Token. این مطمئن‌ترین راه اتصال است — برای همهٔ درخواست‌ها کار می‌کند و مشکل لاگین/CSRF ندارد. نام کاربری و رمز را دست نزن؛ اگر توکن وارد شود از آن استفاده می‌شود.";
 

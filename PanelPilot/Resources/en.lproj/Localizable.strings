@@ -36,6 +36,8 @@
 "setup.connecting" = "Connecting…";
 "setup.allow_insecure" = "Allow insecure TLS";
 "setup.allow_insecure_hint" = "Enable if your panel uses a self-signed certificate.";
+"setup.two_factor" = "Two-factor code (only if 2FA is on)";
+"setup.two_factor_hint" = "Leave empty unless your panel has two-factor authentication enabled.";
 "setup.api_token" = "API Token (recommended)";
 "setup.api_token_hint" = "In the panel: Settings → Security → API Token. This is the reliable way to connect — it works for every API call and avoids login/CSRF issues. Leave username/password as-is; the token is used when present.";
 
