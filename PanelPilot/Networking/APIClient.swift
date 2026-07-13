@@ -55,6 +55,26 @@ actor APIClient {
 
     func setMockMode(_ on: Bool) { mockMode = on }
 
+    /// Make requests look like they come from the panel's own web UI, so a
+    /// reverse proxy / Cloudflare / WAF in front of the panel doesn't reject
+    /// them with 403 for lacking browser-like headers.
+    private func applyBrowserHeaders(_ req: inout URLRequest) {
+        req.setValue(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
+            + "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+            forHTTPHeaderField: "User-Agent")
+        req.setValue("application/json, text/plain, */*", forHTTPHeaderField: "Accept")
+        req.setValue("en-US,en;q=0.9", forHTTPHeaderField: "Accept-Language")
+        req.setValue("XMLHttpRequest", forHTTPHeaderField: "X-Requested-With")
+        if let base = config.url("") {
+            req.setValue(base.absoluteString, forHTTPHeaderField: "Referer")
+            if let scheme = base.scheme, let host = base.host {
+                let port = base.port.map { ":\($0)" } ?? ""
+                req.setValue("\(scheme)://\(host)\(port)", forHTTPHeaderField: "Origin")
+            }
+        }
+    }
+
     // MARK: - Auth
 
     /// Perform a fresh login and persist credentials on success.
@@ -66,6 +86,7 @@ actor APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        applyBrowserHeaders(&request)
         let body = "username=\(config.username.formURLEncoded)&password=\(config.password.formURLEncoded)"
         request.httpBody = body.data(using: .utf8)
 
@@ -123,6 +144,7 @@ actor APIClient {
 
         var req = URLRequest(url: url)
         req.httpMethod = method
+        applyBrowserHeaders(&req)
         if let formBody {
             req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             req.httpBody = formBody.data(using: .utf8)
