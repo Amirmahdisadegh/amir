@@ -70,7 +70,7 @@ struct ClientListItem: View {
     private func delete() {
         Task {
             do {
-                try await store.deleteClient(inboundId: row.inbound.id, clientId: row.client.id)
+                try await store.deleteClient(inboundId: row.inbound.id, client: row.client)
                 toast = ToastData(message: "toast.client_deleted".loc, symbol: "trash")
             } catch { toast = ToastData(message: (error as? APIError)?.errorDescription ?? "",
                                         symbol: "exclamationmark.triangle") }

@@ -359,23 +359,22 @@ actor APIClient {
 
     func fetchOnlineClients() async throws -> [String] {
         if mockMode { return MockData.onlineEmails }
-        // Panels differ: onlines may be POST or GET, and the payload may be a
-        // list of email strings or a list of objects ({email|clientEmail|...}).
-        for method in ["POST", "GET"] {
-            // Shape 1: obj is [String]
-            if let env = try? await request(path: "panel/api/inbounds/onlines",
-                                            method: method,
-                                            decode: APIEnvelope<[String]>.self),
-               let obj = env.obj, !obj.isEmpty {
-                return obj
-            }
-            // Shape 2: obj is [ { email: ... } ]
-            if let env = try? await request(path: "panel/api/inbounds/onlines",
-                                            method: method,
-                                            decode: APIEnvelope<[OnlineEntry]>.self),
-               let obj = env.obj {
-                let emails = obj.compactMap { $0.email }.filter { !$0.isEmpty }
-                if !emails.isEmpty { return emails }
+        // Panels differ on path (clients/onlines vs inbounds/onlines), method
+        // (GET/POST), and payload shape ([String] or [{email|clientEmail|...}]).
+        let paths = ["panel/api/clients/onlines", "panel/api/inbounds/onlines"]
+        for path in paths {
+            for method in ["POST", "GET"] {
+                if let env = try? await request(path: path, method: method,
+                                                decode: APIEnvelope<[String]>.self),
+                   let obj = env.obj, !obj.isEmpty {
+                    return obj
+                }
+                if let env = try? await request(path: path, method: method,
+                                                decode: APIEnvelope<[OnlineEntry]>.self),
+                   let obj = env.obj {
+                    let emails = obj.compactMap { $0.email }.filter { !$0.isEmpty }
+                    if !emails.isEmpty { return emails }
+                }
             }
         }
         return []
@@ -405,43 +404,87 @@ actor APIClient {
     }
 
     // MARK: - Client mutations
+    //
+    // Modern 3x-ui (this panel) manages clients as a top-level resource keyed by
+    // EMAIL under /panel/api/clients/*. Classic panels key clients by inbound +
+    // UUID under /panel/api/inbounds/*. We try the modern path first and fall
+    // back to the classic one so the app works against both.
 
     func addClient(inboundId: Int, client: Client) async throws {
         if mockMode { return }
-        let settingsJSON = try encodeClientSettings([client])
-        let body = try JSONEncoder().encode(ClientMutation(id: inboundId, settings: settingsJSON))
+        do {
+            let payload = ClientAddBody(client: .init(client), inboundIds: [inboundId])
+            let body = try JSONEncoder().encode(payload)
+            let env = try await request(path: "panel/api/clients/add",
+                                        jsonBody: body, decode: APIStatusEnvelope.self)
+            guard env.success else { throw APIError.server(env.msg ?? "Add client failed") }
+        } catch {
+            guard (try? await addClientClassic(inboundId: inboundId, client: client)) != nil
+            else { throw error }
+        }
+    }
+
+    func updateClient(inboundId: Int, client: Client) async throws {
+        if mockMode { return }
+        do {
+            let payload = ClientUpdateBody(client: .init(client), inboundIds: [inboundId])
+            let body = try JSONEncoder().encode(payload)
+            let env = try await request(path: "panel/api/clients/update/\(client.email.pathEncoded)",
+                                        jsonBody: body, decode: APIStatusEnvelope.self)
+            guard env.success else { throw APIError.server(env.msg ?? "Update client failed") }
+        } catch {
+            guard (try? await updateClientClassic(inboundId: inboundId, client: client)) != nil
+            else { throw error }
+        }
+    }
+
+    func deleteClient(inboundId: Int, client: Client) async throws {
+        if mockMode { return }
+        do {
+            let env = try await request(path: "panel/api/clients/del/\(client.email.pathEncoded)",
+                                        decode: APIStatusEnvelope.self)
+            guard env.success else { throw APIError.server(env.msg ?? "Delete client failed") }
+        } catch {
+            let classic = "panel/api/inbounds/\(inboundId)/delClient/\(client.id)"
+            guard let env = try? await request(path: classic, decode: APIStatusEnvelope.self),
+                  env.success else { throw error }
+        }
+    }
+
+    func resetClientTraffic(inboundId: Int, email: String) async throws {
+        if mockMode { return }
+        do {
+            let env = try await request(path: "panel/api/clients/\(email.pathEncoded)/resetTraffic",
+                                        decode: APIStatusEnvelope.self)
+            guard env.success else { throw APIError.server(env.msg ?? "Reset traffic failed") }
+        } catch {
+            let classic = "panel/api/inbounds/\(inboundId)/resetClientTraffic/\(email.pathEncoded)"
+            guard let env = try? await request(path: classic, decode: APIStatusEnvelope.self),
+                  env.success else { throw error }
+        }
+    }
+
+    // MARK: - Classic (inbound + UUID) fallbacks
+
+    private func addClientClassic(inboundId: Int, client: Client) async throws {
+        let body = try JSONEncoder().encode(
+            ClientMutation(id: inboundId, settings: try encodeClientSettings([client])))
         let env = try await request(path: "panel/api/inbounds/addClient",
                                     jsonBody: body, decode: APIStatusEnvelope.self)
         guard env.success else { throw APIError.server(env.msg ?? "Add client failed") }
     }
 
-    func updateClient(inboundId: Int, client: Client) async throws {
-        if mockMode { return }
-        let settingsJSON = try encodeClientSettings([client])
-        let body = try JSONEncoder().encode(ClientMutation(id: inboundId, settings: settingsJSON))
+    private func updateClientClassic(inboundId: Int, client: Client) async throws {
+        let body = try JSONEncoder().encode(
+            ClientMutation(id: inboundId, settings: try encodeClientSettings([client])))
         let env = try await request(path: "panel/api/inbounds/updateClient/\(client.id)",
                                     jsonBody: body, decode: APIStatusEnvelope.self)
         guard env.success else { throw APIError.server(env.msg ?? "Update client failed") }
     }
 
-    func deleteClient(inboundId: Int, clientId: String) async throws {
-        if mockMode { return }
-        let env = try await request(path: "panel/api/inbounds/\(inboundId)/delClient/\(clientId)",
-                                    decode: APIStatusEnvelope.self)
-        guard env.success else { throw APIError.server(env.msg ?? "Delete client failed") }
-    }
-
-    func resetClientTraffic(inboundId: Int, email: String) async throws {
-        if mockMode { return }
-        let encodedEmail = email.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? email
-        let env = try await request(path: "panel/api/inbounds/\(inboundId)/resetClientTraffic/\(encodedEmail)",
-                                    decode: APIStatusEnvelope.self)
-        guard env.success else { throw APIError.server(env.msg ?? "Reset traffic failed") }
-    }
-
     // MARK: - Helpers
 
-    /// The panel expects `settings` as a JSON *string* containing a `clients` array.
+    /// The classic panel expects `settings` as a JSON *string* with a `clients` array.
     private func encodeClientSettings(_ clients: [Client]) throws -> String {
         struct Payload: Encodable { let clients: [Client] }
         let data = try JSONEncoder().encode(Payload(clients: clients))
@@ -452,11 +495,40 @@ actor APIClient {
         let id: Int
         let settings: String
     }
+
+    /// Client fields the modern /panel/api/clients endpoints accept.
+    private struct ModernClient: Encodable {
+        let email: String
+        let totalGB: Int64
+        let expiryTime: Int64
+        let tgId: Int
+        let limitIp: Int
+        let enable: Bool
+        let flow: String?
+        init(_ c: Client) {
+            email = c.email
+            totalGB = c.totalGB
+            expiryTime = c.expiryTime
+            tgId = Int(c.tgId ?? "") ?? 0
+            limitIp = c.limitIp ?? 0
+            enable = c.enable
+            flow = c.flow.isEmpty ? nil : c.flow
+        }
+    }
+    private struct ClientAddBody: Encodable { let client: ModernClient; let inboundIds: [Int] }
+    private struct ClientUpdateBody: Encodable { let client: ModernClient; let inboundIds: [Int] }
 }
 
 extension String {
     /// Percent-encode for application/x-www-form-urlencoded bodies.
     var formURLEncoded: String {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        return addingPercentEncoding(withAllowedCharacters: allowed) ?? self
+    }
+
+    /// Percent-encode a value for use as a single URL path segment (encodes `@`, `/`, …).
+    var pathEncoded: String {
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
         return addingPercentEncoding(withAllowedCharacters: allowed) ?? self

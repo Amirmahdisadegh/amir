@@ -94,8 +94,8 @@ final class DataStore {
         await refreshAll()
     }
 
-    func deleteClient(inboundId: Int, clientId: String) async throws {
-        try await APIClient.shared.deleteClient(inboundId: inboundId, clientId: clientId)
+    func deleteClient(inboundId: Int, client: Client) async throws {
+        try await APIClient.shared.deleteClient(inboundId: inboundId, client: client)
         await refreshAll()
     }
 

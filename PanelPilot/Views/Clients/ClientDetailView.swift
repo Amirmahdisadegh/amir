@@ -233,9 +233,10 @@ struct ClientDetailView: View {
         }
     }
     private func delete() {
+        guard let client = row?.client else { return }
         Task {
             do {
-                try await store.deleteClient(inboundId: inboundId, clientId: clientId)
+                try await store.deleteClient(inboundId: inboundId, client: client)
                 Haptics.success()
                 dismiss()
             } catch { errorToast(error) }
