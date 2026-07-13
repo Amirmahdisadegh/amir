@@ -42,10 +42,16 @@ struct SetupView: View {
                 }
 
                 if let error {
-                    Label(error.errorDescription ?? "", systemImage: error.symbol)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.expired)
-                        .padding(.horizontal, 4)
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: error.symbol)
+                        Text(error.errorDescription ?? "")
+                            .fixedSize(horizontal: false, vertical: true)
+                            .textSelection(.enabled)
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(Theme.expired)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
                 }
 
                 PrimaryButton(

@@ -76,19 +76,32 @@ actor APIClient {
         }
 
         guard let http = response as? HTTPURLResponse else { throw APIError.panelUnreachable }
-        if http.statusCode == 401 { throw APIError.invalidCredentials }
 
         if let env = try? JSONDecoder().decode(APIStatusEnvelope.self, from: data) {
             if env.success {
                 isLoggedIn = true
                 KeychainStore.saveConfig(config)
                 return true
-            } else {
+            }
+            // Panel replied with JSON but rejected the request — show its real message
+            // so genuine bad credentials are distinguishable from other server errors.
+            let msg = (env.msg ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let lower = msg.lowercased()
+            if lower.contains("password") || lower.contains("username")
+                || lower.contains("رمز") || lower.contains("کاربر") || msg.isEmpty {
                 throw APIError.invalidCredentials
             }
+            throw APIError.server(msg)
         }
-        // Non-JSON body usually means the login page HTML was returned → bad creds.
-        throw APIError.invalidCredentials
+
+        if http.statusCode == 401 { throw APIError.invalidCredentials }
+
+        // Non-JSON body: surface the status + a snippet so we can see what the panel returned
+        // (HTML login page, redirect, Cloudflare challenge, wrong base path, etc.).
+        let snippet = String(data: data.prefix(300), encoding: .utf8)?
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespaces) ?? "<binary>"
+        throw APIError.server("HTTP \(http.statusCode) · \(config.url("login")?.absoluteString ?? "") · \(snippet)")
     }
 
     // MARK: - Core request with transparent re-login
