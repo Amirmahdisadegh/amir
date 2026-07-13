@@ -10,6 +10,8 @@ actor APIClient {
     private var session: URLSession
     private let insecureDelegate = InsecureTLSDelegate()
     private var isLoggedIn = false
+    /// CSRF token this panel requires on unsafe (POST) cookie-session requests.
+    private var csrfToken: String?
 
     // Mock mode short-circuits every request with fake data (used by previews).
     var mockMode: Bool = false
@@ -39,6 +41,7 @@ actor APIClient {
     func updateConfig(_ newConfig: PanelConfig) {
         self.config = newConfig
         self.isLoggedIn = false
+        self.csrfToken = nil
         // Credentials are persisted only after a *successful* login (see login()),
         // so a failed attempt never strands the user with saved-but-invalid config.
     }
@@ -51,6 +54,7 @@ actor APIClient {
         UserDefaults.standard.set(allow, forKey: "allowInsecureTLS")
         session = APIClient.makeSession(insecure: allow, delegate: insecureDelegate)
         isLoggedIn = false
+        csrfToken = nil
     }
 
     func setMockMode(_ on: Bool) { mockMode = on }
@@ -78,7 +82,56 @@ actor APIClient {
         if config.usesToken {
             let token = config.apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let csrf = csrfToken, !csrf.isEmpty {
+            // Cookie sessions must replay the CSRF token on unsafe requests.
+            req.setValue(csrf, forHTTPHeaderField: "X-CSRF-Token")
         }
+    }
+
+    // MARK: - CSRF
+
+    /// Fetch a CSRF token the way the panel's SPA does (GET /csrf-token), tolerant
+    /// of the token arriving in a header, a JSON field, or as a plain string.
+    private func refreshCSRFToken() async {
+        guard let url = config.url("csrf-token") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        applyBrowserHeaders(&req)
+        guard let (data, response) = try? await session.data(for: req) else { return }
+        if let http = response as? HTTPURLResponse {
+            for field in ["X-CSRF-Token", "X-Csrf-Token", "x-csrf-token"] {
+                if let v = http.value(forHTTPHeaderField: field), !v.isEmpty {
+                    csrfToken = v
+                    return
+                }
+            }
+        }
+        if let token = Self.extractCSRF(from: data) { csrfToken = token; return }
+        // Double-submit pattern: token delivered as a cookie to be echoed in the header.
+        if let cookies = session.configuration.httpCookieStorage?.cookies(for: url) {
+            for cookie in cookies where cookie.name.lowercased().contains("csrf") {
+                if !cookie.value.isEmpty { csrfToken = cookie.value; return }
+            }
+        }
+    }
+
+    private static func extractCSRF(from data: Data) -> String? {
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            for key in ["token", "csrfToken", "csrf_token", "csrf", "obj", "data"] {
+                if let v = obj[key] as? String, !v.isEmpty { return v }
+            }
+            // Nested envelope: { obj: { token: ... } }
+            if let nested = obj["obj"] as? [String: Any],
+               let v = nested["token"] as? String, !v.isEmpty { return v }
+            return nil
+        }
+        // Plain-string body
+        if let s = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !s.isEmpty, !s.contains("<"), !s.contains("{"), s.count < 256 {
+            return s
+        }
+        return nil
     }
 
     // MARK: - Auth
@@ -99,20 +152,10 @@ actor APIClient {
 
         guard let url = config.url("login") else { throw APIError.invalidURL }
 
-        // Warm-up GET: browsers load the login page first, which sets any
-        // anti-bot / session cookie the server expects on the subsequent POST.
-        // Some panels (or a proxy in front) answer a cold, cookieless POST with 403.
-        if let warmURL = config.url("login") {
-            var warm = URLRequest(url: warmURL)
-            warm.httpMethod = "GET"
-            warm.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                          forHTTPHeaderField: "Accept")
-            applyBrowserHeaders(&warm)
-            // Restore the HTML Accept overwritten by applyBrowserHeaders.
-            warm.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                          forHTTPHeaderField: "Accept")
-            _ = try? await session.data(for: warm)
-        }
+        // This panel protects every unsafe request (including login) with CSRF.
+        // Mirror the web UI: GET /csrf-token first to obtain the token + cookie,
+        // then submit the login POST carrying it in the X-CSRF-Token header.
+        await refreshCSRFToken()
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -133,6 +176,8 @@ actor APIClient {
         if let env = try? JSONDecoder().decode(APIStatusEnvelope.self, from: data) {
             if env.success {
                 isLoggedIn = true
+                // The authenticated session gets a fresh CSRF token for API calls.
+                await refreshCSRFToken()
                 KeychainStore.saveConfig(config)
                 return true
             }
