@@ -39,7 +39,8 @@ actor APIClient {
     func updateConfig(_ newConfig: PanelConfig) {
         self.config = newConfig
         self.isLoggedIn = false
-        KeychainStore.saveConfig(newConfig)
+        // Credentials are persisted only after a *successful* login (see login()),
+        // so a failed attempt never strands the user with saved-but-invalid config.
     }
 
     func currentConfig() -> PanelConfig { config }

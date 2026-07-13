@@ -17,6 +17,13 @@ struct PanelConfig: Codable, Equatable {
     var normalizedBase: String {
         var s = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         while s.hasSuffix("/") { s.removeLast() }
+        // Users often paste the browser address, which ends at the web UI
+        // ({base}/panel). Login and the API actually live at {base}, so drop a
+        // trailing "/panel" segment if present — the app works either way.
+        if s.lowercased().hasSuffix("/panel") {
+            s = String(s.dropLast("/panel".count))
+            while s.hasSuffix("/") { s.removeLast() }
+        }
         return s + "/"
     }
 
