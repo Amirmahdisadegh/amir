@@ -83,6 +83,21 @@ actor APIClient {
         if mockMode { isLoggedIn = true; return true }
         guard let url = config.url("login") else { throw APIError.invalidURL }
 
+        // Warm-up GET: browsers load the login page first, which sets any
+        // anti-bot / session cookie the server expects on the subsequent POST.
+        // Some panels (or a proxy in front) answer a cold, cookieless POST with 403.
+        if let warmURL = config.url("login") {
+            var warm = URLRequest(url: warmURL)
+            warm.httpMethod = "GET"
+            warm.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                          forHTTPHeaderField: "Accept")
+            applyBrowserHeaders(&warm)
+            // Restore the HTML Accept overwritten by applyBrowserHeaders.
+            warm.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                          forHTTPHeaderField: "Accept")
+            _ = try? await session.data(for: warm)
+        }
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
