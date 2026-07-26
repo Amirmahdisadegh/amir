@@ -16,6 +16,8 @@ struct ClientEditorView: View {
     @State private var expiryDays: Double
     @State private var enable: Bool
     @State private var flow: String
+    @State private var selectedInboundIds: Set<Int>
+    @State private var didLoadSelection = false
     @State private var isSaving = false
     @State private var error: APIError?
 
@@ -30,6 +32,7 @@ struct ClientEditorView: View {
         _limitGB = State(initialValue: existing.map { Double($0.totalGB) / 1_073_741_824 } ?? 0)
         _enable = State(initialValue: existing?.enable ?? true)
         _flow = State(initialValue: existing?.flow ?? defaultFlow(for: inbound))
+        _selectedInboundIds = State(initialValue: [inbound.id])
         if let expiry = existing?.expiryTime, expiry > 0 {
             let days = (Double(expiry) / 1000 - Date().timeIntervalSince1970) / 86_400
             _expiryDays = State(initialValue: max(0, days.rounded()))
@@ -87,6 +90,33 @@ struct ClientEditorView: View {
                         }
                     }
 
+                    if store.inbounds.count > 1 {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                SectionHeader(title: "client.inbounds".loc, symbol: "square.stack.3d.up")
+                                ForEach(store.inbounds) { inb in
+                                    Button {
+                                        Haptics.tap(); toggleInbound(inb.id)
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: selectedInboundIds.contains(inb.id)
+                                                  ? "checkmark.circle.fill" : "circle")
+                                                .foregroundStyle(selectedInboundIds.contains(inb.id)
+                                                                 ? Theme.accentCyan : Theme.textTertiary)
+                                            Text(inb.remark.isEmpty ? inb.tag : inb.remark)
+                                                .foregroundStyle(Theme.textPrimary)
+                                            Spacer()
+                                            Text(inb.`protocol`.uppercased())
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundStyle(Theme.textSecondary)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+
                     GlassCard {
                         VStack(spacing: 14) {
                             if inbound.`protocol`.lowercased() == "vless" {
@@ -117,7 +147,7 @@ struct ClientEditorView: View {
 
                     PrimaryButton(title: "common.save".loc, systemImage: "checkmark",
                                   isLoading: isSaving,
-                                  isEnabled: !email.isEmpty) { save() }
+                                  isEnabled: !email.isEmpty && !selectedInboundIds.isEmpty) { save() }
                 }
                 .padding()
             }
@@ -130,8 +160,22 @@ struct ClientEditorView: View {
                     Button("common.cancel".loc) { dismiss() }.foregroundStyle(Theme.textSecondary)
                 }
             }
+            .onAppear {
+                // For an existing client, preselect every inbound it's attached to.
+                guard !didLoadSelection else { return }
+                didLoadSelection = true
+                if let existing {
+                    let ids = store.inboundIds(forEmail: existing.email)
+                    if !ids.isEmpty { selectedInboundIds = Set(ids) }
+                }
+            }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private func toggleInbound(_ id: Int) {
+        if selectedInboundIds.contains(id) { selectedInboundIds.remove(id) }
+        else { selectedInboundIds.insert(id) }
     }
 
     private func labeledField<Content: View>(_ title: String, symbol: String,
@@ -164,13 +208,14 @@ struct ClientEditorView: View {
             : Int64((Date().timeIntervalSince1970 + expiryDays * 86_400) * 1000)
         let client = Client(id: uuid, email: email, flow: flow, totalGB: totalBytes,
                             expiryTime: expiryMs, enable: enable)
+        let ids = Array(selectedInboundIds)
         Task {
             do {
                 if existing == nil {
-                    try await store.addClient(inboundId: inbound.id, client: client)
+                    try await store.addClient(inboundIds: ids, client: client)
                     toast = ToastData(message: "toast.client_added".loc)
                 } else {
-                    try await store.updateClient(inboundId: inbound.id, client: client)
+                    try await store.updateClient(inboundIds: ids, client: client)
                     toast = ToastData(message: "toast.client_updated".loc)
                 }
                 Haptics.success()

@@ -435,29 +435,44 @@ actor APIClient {
     // back to the classic one so the app works against both.
 
     func addClient(inboundId: Int, client: Client) async throws {
+        try await addClient(inboundIds: [inboundId], client: client)
+    }
+
+    /// Create a client attached to one or more inbounds in a single call.
+    func addClient(inboundIds: [Int], client: Client) async throws {
         if mockMode { return }
+        let ids = inboundIds.isEmpty ? [] : inboundIds
         do {
-            let payload = ClientAddBody(client: .init(client), inboundIds: [inboundId])
+            let payload = ClientAddBody(client: .init(client), inboundIds: ids)
             let body = try JSONEncoder().encode(payload)
             let env = try await request(path: "panel/api/clients/add",
                                         jsonBody: body, decode: APIStatusEnvelope.self)
             guard env.success else { throw APIError.server(env.msg ?? "Add client failed") }
         } catch {
-            guard (try? await addClientClassic(inboundId: inboundId, client: client)) != nil
-            else { throw error }
+            var anyOK = false
+            for id in ids where (try? await addClientClassic(inboundId: id, client: client)) != nil {
+                anyOK = true
+            }
+            if !anyOK { throw error }
         }
     }
 
     func updateClient(inboundId: Int, client: Client) async throws {
+        try await updateClient(inboundIds: [inboundId], client: client)
+    }
+
+    /// Update a client, replacing the full set of inbounds it is attached to.
+    func updateClient(inboundIds: [Int], client: Client) async throws {
         if mockMode { return }
         do {
-            let payload = ClientUpdateBody(client: .init(client), inboundIds: [inboundId])
+            let payload = ClientUpdateBody(client: .init(client), inboundIds: inboundIds)
             let body = try JSONEncoder().encode(payload)
             let env = try await request(path: "panel/api/clients/update/\(client.email.pathEncoded)",
                                         jsonBody: body, decode: APIStatusEnvelope.self)
             guard env.success else { throw APIError.server(env.msg ?? "Update client failed") }
         } catch {
-            guard (try? await updateClientClassic(inboundId: inboundId, client: client)) != nil
+            guard let id = inboundIds.first,
+                  (try? await updateClientClassic(inboundId: id, client: client)) != nil
             else { throw error }
         }
     }

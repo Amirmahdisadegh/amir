@@ -122,6 +122,7 @@
 "client.unlimited_hint" = "0 = unlimited";
 "client.no_expiry_hint" = "0 = never expires";
 "client.online_badge" = "online";
+"client.inbounds" = "Inbounds (select one or more)";
 
 /* Settings */
 "settings.title" = "Settings";

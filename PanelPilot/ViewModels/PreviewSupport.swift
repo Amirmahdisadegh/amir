@@ -25,6 +25,7 @@ extension DataStore {
         }
         store.inbounds = MockData.inbounds
         store.onlineEmails = Set(MockData.onlineEmails)
+        store.rebuildClientRows()
         store.serverStatus = MockData.serverStatus
         store.lastUpdated = Date()
         // Seed a fake throughput curve.

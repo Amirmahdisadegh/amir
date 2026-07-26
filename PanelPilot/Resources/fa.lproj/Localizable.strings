@@ -122,6 +122,7 @@
 "client.unlimited_hint" = "۰ = نامحدود";
 "client.no_expiry_hint" = "۰ = بدون انقضا";
 "client.online_badge" = "آنلاین";
+"client.inbounds" = "ورودی‌ها (یک یا چند تا)";
 
 /* Settings */
 "settings.title" = "تنظیمات";

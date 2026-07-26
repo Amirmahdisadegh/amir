@@ -46,6 +46,7 @@ final class DataStore {
             sortBy: [SortDescriptor(\.timestamp)])) {
             trafficSamples = samples.map { (date: $0.timestamp, up: $0.up, down: $0.down) }
         }
+        rebuildClientRows()
     }
 
     // MARK: - Refresh
@@ -64,6 +65,7 @@ final class DataStore {
 
             inbounds = fetchedInbounds
             onlineEmails = Set(fetchedOnlines)
+            rebuildClientRows()
             if let fetchedStatus {
                 serverStatus = fetchedStatus
                 appendSample(up: fetchedStatus.netUp, down: fetchedStatus.netDown)
@@ -79,6 +81,7 @@ final class DataStore {
     func refreshOnlines() async {
         if let onlines = try? await APIClient.shared.fetchOnlineClients() {
             onlineEmails = Set(onlines)
+            rebuildClientRows()
         }
     }
 
@@ -95,12 +98,20 @@ final class DataStore {
     }
 
     func addClient(inboundId: Int, client: Client) async throws {
-        try await APIClient.shared.addClient(inboundId: inboundId, client: client)
+        try await addClient(inboundIds: [inboundId], client: client)
+    }
+
+    func addClient(inboundIds: [Int], client: Client) async throws {
+        try await APIClient.shared.addClient(inboundIds: inboundIds, client: client)
         await refreshAll()
     }
 
     func updateClient(inboundId: Int, client: Client) async throws {
-        try await APIClient.shared.updateClient(inboundId: inboundId, client: client)
+        try await updateClient(inboundIds: [inboundId], client: client)
+    }
+
+    func updateClient(inboundIds: [Int], client: Client) async throws {
+        try await APIClient.shared.updateClient(inboundIds: inboundIds, client: client)
         await refreshAll()
     }
 
@@ -114,36 +125,46 @@ final class DataStore {
         await refreshAll()
     }
 
-    /// Toggle enable flag by re-submitting the full client with `enable` flipped.
+    /// Toggle enable flag, preserving the client's full set of attached inbounds.
     func toggleClient(inboundId: Int, client: Client) async throws {
         var updated = client
         updated.enable.toggle()
-        try await updateClient(inboundId: inboundId, client: updated)
+        let ids = inboundIds(forEmail: client.email)
+        try await updateClient(inboundIds: ids.isEmpty ? [inboundId] : ids, client: updated)
     }
 
-    // MARK: - Derived data
+    // MARK: - Derived data (cached for performance)
 
-    func inbound(withId id: Int) -> Inbound? { inbounds.first { $0.id == id } }
+    /// Rebuilt once whenever inbounds/onlines change, so views (search, filters)
+    /// don't re-parse every inbound's settings JSON on each keystroke.
+    var allClientRows: [ClientRow] = []
 
-    /// All clients across inbounds, paired with their inbound and stats.
-    var allClientRows: [ClientRow] {
-        inbounds.flatMap { inbound in
-            inbound.clients.map { client in
+    func rebuildClientRows() {
+        allClientRows = inbounds.flatMap { inbound in
+            let stats = inbound.clientStats
+            return inbound.clients.map { client in
                 ClientRow(
                     client: client,
                     inbound: inbound,
-                    stat: inbound.clientStats.first { $0.email == client.email },
+                    stat: stats.first { $0.email == client.email },
                     isOnline: onlineEmails.contains(client.email)
                 )
             }
         }
     }
 
+    func inbound(withId id: Int) -> Inbound? { inbounds.first { $0.id == id } }
+
     func clientRows(forInbound id: Int) -> [ClientRow] {
         allClientRows.filter { $0.inbound.id == id }
     }
 
-    var totalClients: Int { inbounds.reduce(0) { $0 + $1.clients.count } }
+    /// Inbound IDs a client (by email) is currently attached to.
+    func inboundIds(forEmail email: String) -> [Int] {
+        inbounds.filter { inb in inb.clients.contains { $0.email == email } }.map { $0.id }
+    }
+
+    var totalClients: Int { allClientRows.count }
     var onlineCount: Int { onlineEmails.count }
     var totalTraffic: Int64 { inbounds.reduce(0) { $0 + $1.totalTraffic } }
 
@@ -191,6 +212,7 @@ final class DataStore {
     func clear() {
         inbounds = []
         onlineEmails = []
+        allClientRows = []
         serverStatus = nil
         trafficSamples = []
         lastUpdated = nil
