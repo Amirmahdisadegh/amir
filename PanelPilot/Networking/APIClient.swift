@@ -403,6 +403,30 @@ actor APIClient {
         throw lastError
     }
 
+    // MARK: - Inbound mutations
+
+    /// Create a new inbound. Body is a JSON object built by the caller (settings/
+    /// streamSettings/sniffing sent as nested JSON objects, which this panel prefers).
+    func addInbound(jsonBody: Data) async throws {
+        if mockMode { return }
+        let env = try await request(path: "panel/api/inbounds/add",
+                                    jsonBody: jsonBody, decode: APIStatusEnvelope.self)
+        guard env.success else { throw APIError.server(env.msg ?? "Add inbound failed") }
+    }
+
+    func deleteInbound(id: Int) async throws {
+        if mockMode { return }
+        do {
+            let env = try await request(path: "panel/api/inbounds/del/\(id)",
+                                        decode: APIStatusEnvelope.self)
+            guard env.success else { throw APIError.server(env.msg ?? "Delete inbound failed") }
+        } catch {
+            let env = try? await request(path: "panel/api/inbounds/\(id)",
+                                         method: "POST", decode: APIStatusEnvelope.self)
+            guard env?.success == true else { throw error }
+        }
+    }
+
     // MARK: - Client mutations
     //
     // Modern 3x-ui (this panel) manages clients as a top-level resource keyed by

@@ -84,6 +84,16 @@ final class DataStore {
 
     // MARK: - Client mutations (optimistic refresh)
 
+    func addInbound(jsonBody: Data) async throws {
+        try await APIClient.shared.addInbound(jsonBody: jsonBody)
+        await refreshAll()
+    }
+
+    func deleteInbound(id: Int) async throws {
+        try await APIClient.shared.deleteInbound(id: id)
+        await refreshAll()
+    }
+
     func addClient(inboundId: Int, client: Client) async throws {
         try await APIClient.shared.addClient(inboundId: inboundId, client: client)
         await refreshAll()

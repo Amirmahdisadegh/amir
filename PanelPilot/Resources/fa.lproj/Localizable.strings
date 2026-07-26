@@ -80,6 +80,15 @@
 "clients.empty" = "کاربری وجود ندارد";
 "clients.empty_hint" = "برای اشتراک دسترسی، به این ورودی کاربر اضافه کنید.";
 "clients.add" = "افزودن کاربر";
+"clients.pick_inbound" = "کاربر به کدام ورودی اضافه شود؟";
+"inbound.new" = "ورودی جدید";
+"inbound.type" = "نوع";
+"inbound.remark" = "نام / برچسب";
+"inbound.port_label" = "پورت";
+"inbound.sni" = "دامنهٔ SNI / مقصد";
+"inbound.reality_hint" = "کلیدهای Reality و Short ID به‌صورت خودکار روی همین دستگاه ساخته می‌شوند.";
+"inbound.ws_path" = "مسیر WebSocket";
+"inbound.create" = "ساخت ورودی";
 "clients.count" = "%d کاربر";
 "clients.filter.online" = "آنلاین";
 "clients.filter.expiring" = "درحال انقضا";

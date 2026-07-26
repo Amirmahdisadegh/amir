@@ -80,6 +80,15 @@
 "clients.empty" = "No clients";
 "clients.empty_hint" = "Add a client to this inbound to share access.";
 "clients.add" = "Add client";
+"clients.pick_inbound" = "Add client to which inbound?";
+"inbound.new" = "New inbound";
+"inbound.type" = "Type";
+"inbound.remark" = "Name / Remark";
+"inbound.port_label" = "Port";
+"inbound.sni" = "SNI / dest domain";
+"inbound.reality_hint" = "Reality keys and short ID are generated automatically on this device.";
+"inbound.ws_path" = "WebSocket path";
+"inbound.create" = "Create inbound";
 "clients.count" = "%d clients";
 "clients.filter.online" = "Online";
 "clients.filter.expiring" = "Expiring soon";

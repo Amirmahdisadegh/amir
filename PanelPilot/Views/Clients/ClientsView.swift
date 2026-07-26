@@ -30,6 +30,8 @@ struct ClientsView: View {
     @State private var activeFilters: Set<ClientFilter> = []
     @State private var selectedInbound: Int? = nil   // nil == all
     @State private var toast: ToastData?
+    @State private var addToInbound: Inbound?
+    @State private var showInboundPicker = false
 
     private var filteredRows: [ClientRow] {
         var rows = store.allClientRows
@@ -58,8 +60,16 @@ struct ClientsView: View {
             .navigationTitle("clients.title".loc)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    RefreshButton(isLoading: store.isLoading) {
-                        Task { await store.refreshAll() }
+                    HStack(spacing: 4) {
+                        Button {
+                            Haptics.tap(); startAddClient()
+                        } label: {
+                            Image(systemName: "plus.circle.fill").foregroundStyle(Theme.accentGradient)
+                        }
+                        .disabled(store.inbounds.isEmpty)
+                        RefreshButton(isLoading: store.isLoading) {
+                            Task { await store.refreshAll() }
+                        }
                     }
                 }
             }
@@ -68,7 +78,29 @@ struct ClientsView: View {
             }
             .searchable(text: $search, prompt: "clients.search".loc)
             .refreshable { await store.refreshAll() }
+            .sheet(item: $addToInbound) { inbound in
+                ClientEditorView(inbound: inbound, existing: nil, toast: $toast)
+            }
+            .confirmationDialog("clients.pick_inbound".loc, isPresented: $showInboundPicker,
+                                titleVisibility: .visible) {
+                ForEach(store.inbounds) { inbound in
+                    Button(inbound.remark.isEmpty ? inbound.tag : inbound.remark) {
+                        addToInbound = inbound
+                    }
+                }
+                Button("common.cancel".loc, role: .cancel) {}
+            }
             .toast($toast)
+        }
+    }
+
+    private func startAddClient() {
+        if let id = selectedInbound, let inbound = store.inbound(withId: id) {
+            addToInbound = inbound
+        } else if store.inbounds.count == 1 {
+            addToInbound = store.inbounds.first
+        } else {
+            showInboundPicker = true
         }
     }
 

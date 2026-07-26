@@ -1,8 +1,12 @@
 import SwiftUI
+import CryptoKit
 
 struct InboundsView: View {
     @Environment(AppState.self) private var app
     private var store: DataStore { app.store }
+
+    @State private var showAddInbound = false
+    @State private var toast: ToastData?
 
     var body: some View {
         NavigationStack {
@@ -40,11 +44,22 @@ struct InboundsView: View {
             .navigationTitle("inbounds.title".loc)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    RefreshButton(isLoading: store.isLoading) {
-                        Task { await store.refreshAll() }
+                    HStack(spacing: 4) {
+                        Button {
+                            Haptics.tap(); showAddInbound = true
+                        } label: {
+                            Image(systemName: "plus.circle.fill").foregroundStyle(Theme.accentGradient)
+                        }
+                        RefreshButton(isLoading: store.isLoading) {
+                            Task { await store.refreshAll() }
+                        }
                     }
                 }
             }
+            .sheet(isPresented: $showAddInbound) {
+                InboundEditorView(toast: $toast)
+            }
+            .toast($toast)
             .navigationDestination(for: Int.self) { id in
                 if let inbound = store.inbound(withId: id) {
                     InboundDetailView(inboundId: inbound.id)
@@ -131,4 +146,201 @@ struct InboundCard: View {
     InboundsView()
         .environment(AppState.preview())
         .preferredColorScheme(.dark)
+}
+
+// MARK: - Add inbound
+
+/// Minimal inbound creator for the two most common setups: VLESS+Reality
+/// (keys generated on-device) and VMess over WebSocket. Sends the inbound as
+/// a nested-JSON payload to POST /panel/api/inbounds/add.
+struct InboundEditorView: View {
+    @Binding var toast: ToastData?
+    @Environment(AppState.self) private var app
+    @Environment(\.dismiss) private var dismiss
+    private var store: DataStore { app.store }
+
+    enum Kind: String, CaseIterable, Identifiable {
+        case vlessReality, vmessWS
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .vlessReality: return "VLESS + Reality"
+            case .vmessWS: return "VMess + WS"
+            }
+        }
+    }
+
+    @State private var kind: Kind = .vlessReality
+    @State private var remark = ""
+    @State private var port = "443"
+    @State private var sni = "yahoo.com"
+    @State private var wsPath = "/"
+    @State private var isSaving = false
+    @State private var error: APIError?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("inbound.type".loc)
+                                .font(.caption.weight(.medium)).foregroundStyle(Theme.textSecondary)
+                            Picker("", selection: $kind) {
+                                ForEach(Kind.allCases) { Text($0.title).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
+
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 16) {
+                            field("inbound.remark".loc, text: $remark, symbol: "tag", keyboard: .default)
+                            Divider().overlay(Theme.cardStroke)
+                            field("inbound.port_label".loc, text: $port, symbol: "number", keyboard: .numberPad)
+                            if kind == .vlessReality {
+                                Divider().overlay(Theme.cardStroke)
+                                field("inbound.sni".loc, text: $sni, symbol: "globe", keyboard: .URL)
+                                Text("inbound.reality_hint".loc)
+                                    .font(.caption2).foregroundStyle(Theme.textTertiary)
+                            } else {
+                                Divider().overlay(Theme.cardStroke)
+                                field("inbound.ws_path".loc, text: $wsPath, symbol: "point.topleft.down.curvedto.point.bottomright.up", keyboard: .URL)
+                            }
+                        }
+                    }
+
+                    if let error {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: error.symbol)
+                            Text(error.errorDescription ?? "")
+                                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                        }
+                        .font(.footnote).foregroundStyle(Theme.expired)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    PrimaryButton(title: "inbound.create".loc, systemImage: "plus",
+                                  isLoading: isSaving,
+                                  isEnabled: !remark.isEmpty && Int(port) != nil) { save() }
+                }
+                .padding()
+            }
+            .background(ScreenBackground())
+            .scrollContentBackground(.hidden)
+            .navigationTitle("inbound.new".loc)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("common.cancel".loc) { dismiss() }.foregroundStyle(Theme.textSecondary)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func field(_ title: String, text: Binding<String>, symbol: String,
+                       keyboard: UIKeyboardType) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: symbol)
+                .font(.caption.weight(.medium)).foregroundStyle(Theme.textSecondary)
+            TextField("", text: text)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .keyboardType(keyboard).foregroundStyle(Theme.textPrimary)
+        }
+    }
+
+    private func save() {
+        guard let portNum = Int(port) else { return }
+        error = nil
+        isSaving = true
+        let payload: [String: Any] = kind == .vlessReality
+            ? RealityKeygen.vlessRealityInbound(remark: remark, port: portNum, sni: sni)
+            : RealityKeygen.vmessWSInbound(remark: remark, port: portNum, path: wsPath)
+        Task {
+            do {
+                let data = try JSONSerialization.data(withJSONObject: payload)
+                try await store.addInbound(jsonBody: data)
+                toast = ToastData(message: "toast.saved".loc)
+                Haptics.success()
+                dismiss()
+            } catch {
+                self.error = APIError.from(error)
+                Haptics.error()
+            }
+            isSaving = false
+        }
+    }
+}
+
+/// Builds inbound payloads and generates Reality X25519 keys on-device.
+enum RealityKeygen {
+    static func keyPair() -> (privateKey: String, publicKey: String) {
+        let priv = Curve25519.KeyAgreement.PrivateKey()
+        return (priv.rawRepresentation.base64URLNoPad,
+                priv.publicKey.rawRepresentation.base64URLNoPad)
+    }
+
+    static func shortId(_ bytes: Int = 4) -> String {
+        (0..<(bytes * 2)).map { _ in "0123456789abcdef".randomElement()! }
+            .reduce(into: "") { $0.append($1) }
+    }
+
+    static func vlessRealityInbound(remark: String, port: Int, sni: String) -> [String: Any] {
+        let keys = keyPair()
+        let serverName = sni.trimmingCharacters(in: .whitespaces).isEmpty ? "yahoo.com" : sni
+
+        let realitySettings: [String: Any] = [
+            "show": false,
+            "dest": "\(serverName):443",
+            "xver": 0,
+            "serverNames": [serverName],
+            "privateKey": keys.privateKey,
+            "shortIds": [shortId()],
+            "settings": ["publicKey": keys.publicKey, "fingerprint": "chrome", "spiderX": "/"]
+        ]
+        let streamSettings: [String: Any] = [
+            "network": "tcp",
+            "security": "reality",
+            "realitySettings": realitySettings,
+            "tcpSettings": ["header": ["type": "none"]]
+        ]
+        let settings: [String: Any] = [
+            "clients": [Any](), "decryption": "none", "fallbacks": [Any]()
+        ]
+        let sniffing: [String: Any] = ["enabled": true, "destOverride": ["http", "tls", "quic"]]
+
+        return [
+            "remark": remark, "enable": true, "listen": "", "port": port,
+            "protocol": "vless", "expiryTime": 0, "total": 0,
+            "settings": settings, "streamSettings": streamSettings, "sniffing": sniffing
+        ]
+    }
+
+    static func vmessWSInbound(remark: String, port: Int, path: String) -> [String: Any] {
+        let wsPath = path.isEmpty ? "/" : path
+        let streamSettings: [String: Any] = [
+            "network": "ws",
+            "security": "none",
+            "wsSettings": ["path": wsPath, "headers": [String: String]()]
+        ]
+        let settings: [String: Any] = ["clients": [Any]()]
+        let sniffing: [String: Any] = ["enabled": true, "destOverride": ["http", "tls", "quic"]]
+
+        return [
+            "remark": remark, "enable": true, "listen": "", "port": port,
+            "protocol": "vmess", "expiryTime": 0, "total": 0,
+            "settings": settings, "streamSettings": streamSettings, "sniffing": sniffing
+        ]
+    }
+}
+
+extension Data {
+    /// base64url without padding — the encoding Xray uses for Reality keys.
+    var base64URLNoPad: String {
+        base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
 }
