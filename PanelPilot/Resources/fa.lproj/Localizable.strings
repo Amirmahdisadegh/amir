@@ -60,6 +60,7 @@
 "dashboard.traffic_chart" = "پهنای باند شبکه";
 "dashboard.no_samples" = "در حال جمع‌آوری داده‌ها…";
 "dashboard.connections" = "اتصالات";
+"dashboard.client_health" = "وضعیت کاربران";
 "dashboard.running" = "در حال اجرا";
 "dashboard.stopped" = "متوقف";
 

@@ -5,6 +5,8 @@ import SwiftUI
 struct ClientRowView: View {
     let row: ClientRow
     var showInbound: Bool = false
+    /// When a client spans multiple inbounds, the names to show as small tags.
+    var inboundNames: [String] = []
 
     var body: some View {
         HStack(spacing: 14) {
@@ -36,11 +38,32 @@ struct ClientRowView: View {
                           systemImage: "calendar")
                         .font(.caption2)
                         .foregroundStyle(expiryTint)
-                    if showInbound {
+                    if showInbound && inboundNames.isEmpty {
                         Text("· \(row.inbound.remark.isEmpty ? row.inbound.tag : row.inbound.remark)")
                             .font(.caption2)
                             .foregroundStyle(Theme.textTertiary)
                             .lineLimit(1)
+                    }
+                }
+
+                if !inboundNames.isEmpty {
+                    HStack(spacing: 5) {
+                        Image(systemName: "square.stack.3d.up")
+                            .font(.system(size: 9))
+                            .foregroundStyle(Theme.textTertiary)
+                        ForEach(inboundNames.prefix(3), id: \.self) { name in
+                            Text(name)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(Theme.accentCyan)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Theme.accentCyan.opacity(0.12), in: Capsule())
+                                .lineLimit(1)
+                        }
+                        if inboundNames.count > 3 {
+                            Text("+\(inboundNames.count - 3)")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(Theme.textTertiary)
+                        }
                     }
                 }
             }

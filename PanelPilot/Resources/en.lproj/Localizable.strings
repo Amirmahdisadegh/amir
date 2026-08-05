@@ -60,6 +60,7 @@
 "dashboard.traffic_chart" = "Network throughput";
 "dashboard.no_samples" = "Collecting live samples…";
 "dashboard.connections" = "Connections";
+"dashboard.client_health" = "Client health";
 "dashboard.running" = "Running";
 "dashboard.stopped" = "Stopped";
 

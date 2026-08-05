@@ -17,6 +17,7 @@ struct DashboardView: View {
                         ErrorStateView(error: error) { Task { await store.refreshAll() } }
                     } else {
                         aggregateGrid
+                        clientHealthCard
                         if let status = store.serverStatus {
                             systemCard(status)
                             networkCard(status)
@@ -58,6 +59,38 @@ struct DashboardView: View {
                      value: Fmt.bytes(store.totalTraffic),
                      systemImage: "chart.bar.fill", tint: Theme.warning)
         }
+    }
+
+    // MARK: - Client health
+
+    private var clientHealthCard: some View {
+        GlassCard {
+            VStack(spacing: 14) {
+                SectionHeader(title: "dashboard.client_health".loc, symbol: "heart.text.square.fill")
+                HStack(spacing: 10) {
+                    healthPill(count: store.expiringSoonCount, title: "clients.filter.expiring".loc,
+                               symbol: "hourglass", tint: Theme.warning)
+                    healthPill(count: store.overLimitCount, title: "clients.filter.over80".loc,
+                               symbol: "gauge.high", tint: Theme.accentCyan)
+                    healthPill(count: store.expiredCount, title: "client.expired".loc,
+                               symbol: "xmark.circle", tint: Theme.expired)
+                    healthPill(count: store.disabledCount, title: "clients.filter.disabled".loc,
+                               symbol: "pause.circle", tint: Theme.offline)
+                }
+            }
+        }
+    }
+
+    private func healthPill(count: Int, title: String, symbol: String, tint: Color) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: symbol).font(.title3).foregroundStyle(tint)
+            Text(Fmt.count(count)).font(.title3.weight(.bold)).foregroundStyle(Theme.textPrimary)
+            Text(title).font(.caption2).foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
     }
 
     // MARK: - System card
@@ -118,6 +151,13 @@ struct DashboardView: View {
             Text(status.xrayRunning ? "dashboard.running".loc : "dashboard.stopped".loc)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
+            if !status.xrayVersion.isEmpty {
+                Text(Fmt.digits("v\(status.xrayVersion)"))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.accentCyan)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Theme.accentCyan.opacity(0.12), in: Capsule())
+            }
         }
     }
 

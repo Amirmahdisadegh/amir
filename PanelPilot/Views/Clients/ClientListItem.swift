@@ -6,6 +6,7 @@ import SwiftUI
 struct ClientListItem: View {
     let row: ClientRow
     var showInbound: Bool = false
+    var inboundNames: [String] = []
     @Binding var toast: ToastData?
 
     @Environment(AppState.self) private var app
@@ -17,7 +18,7 @@ struct ClientListItem: View {
 
     var body: some View {
         NavigationLink(value: row) {
-            ClientRowView(row: row, showInbound: showInbound)
+            ClientRowView(row: row, showInbound: showInbound, inboundNames: inboundNames)
         }
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
         .listRowBackground(Color.clear)

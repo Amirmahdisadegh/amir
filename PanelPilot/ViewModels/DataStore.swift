@@ -169,8 +169,24 @@ final class DataStore {
         inbounds.filter { inb in inb.clients.contains { $0.email == email } }.map { $0.id }
     }
 
-    var totalClients: Int { allClientRows.count }
+    /// One representative row per unique client (by email).
+    var uniqueClientRows: [ClientRow] {
+        var seen = Set<String>()
+        var result: [ClientRow] = []
+        for row in allClientRows {
+            let key = row.client.email.isEmpty ? row.id : row.client.email
+            if seen.insert(key).inserted { result.append(row) }
+        }
+        return result
+    }
+
+    /// Distinct clients (by email), so a client on multiple inbounds counts once.
+    var totalClients: Int { uniqueClientRows.count }
     var onlineCount: Int { onlineEmails.count }
+    var expiringSoonCount: Int { uniqueClientRows.filter { $0.isExpiringSoon }.count }
+    var overLimitCount: Int { uniqueClientRows.filter { $0.isOverEighty }.count }
+    var disabledCount: Int { uniqueClientRows.filter { !$0.client.enable }.count }
+    var expiredCount: Int { uniqueClientRows.filter { $0.isExpired }.count }
     var totalTraffic: Int64 { inbounds.reduce(0) { $0 + $1.totalTraffic } }
 
     // MARK: - Persistence

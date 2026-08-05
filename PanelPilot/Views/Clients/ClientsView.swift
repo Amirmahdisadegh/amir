@@ -188,22 +188,60 @@ struct ClientsView: View {
                                message: "clients.empty_hint".loc)
                 Spacer()
             }
-        } else if filteredRows.isEmpty {
+        } else if groupedClients.isEmpty {
             EmptyStateView(systemImage: "magnifyingglass", title: "clients.empty".loc)
             Spacer()
         } else {
             List {
                 Section {
-                    ForEach(filteredRows) { row in
-                        ClientListItem(row: row, showInbound: selectedInbound == nil, toast: $toast)
+                    ForEach(groupedClients) { group in
+                        ClientListItem(row: group.representative,
+                                       showInbound: selectedInbound == nil,
+                                       inboundNames: group.inboundNames.count > 1 ? group.inboundNames : [],
+                                       toast: $toast)
                     }
                 } header: {
-                    Text(Fmt.digits("clients.count".loc(filteredRows.count)))
+                    Text(Fmt.digits("clients.count".loc(groupedClients.count)))
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+        }
+    }
+
+    /// One row per unique client (by email), merging traffic across inbounds so a
+    /// client attached to several inbounds appears once with its inbounds listed.
+    private struct ClientGroup: Identifiable {
+        let representative: ClientRow
+        let inboundNames: [String]
+        var id: String {
+            representative.client.email.isEmpty ? representative.id : representative.client.email
+        }
+    }
+
+    private var groupedClients: [ClientGroup] {
+        let rows = filteredRows
+        var order: [String] = []
+        var map: [String: [ClientRow]] = [:]
+        for row in rows {
+            let key = row.client.email.isEmpty ? row.id : row.client.email
+            if map[key] == nil { order.append(key) }
+            map[key, default: []].append(row)
+        }
+        return order.map { key in
+            let group = map[key]!
+            let first = group[0]
+            let totalUsed = group.reduce(Int64(0)) { $0 + $1.used }
+            let mergedStat = ClientStat(
+                id: first.stat?.id ?? 0, inboundId: first.inbound.id,
+                enable: first.client.enable, email: first.client.email,
+                up: totalUsed, down: 0,
+                expiryTime: first.client.expiryTime, total: first.client.totalGB)
+            let rep = ClientRow(client: first.client, inbound: first.inbound,
+                                stat: mergedStat, isOnline: group.contains { $0.isOnline })
+            let names = group.map { $0.inbound.remark.isEmpty ? $0.inbound.tag : $0.inbound.remark }
+            return ClientGroup(representative: rep, inboundNames: names)
         }
     }
 }
