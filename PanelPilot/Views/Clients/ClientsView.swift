@@ -22,11 +22,24 @@ enum ClientFilter: String, CaseIterable, Identifiable {
     }
 }
 
+enum ClientSort: String, CaseIterable, Identifiable {
+    case name, usage, expiry
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .name:   return "clients.sort.name".loc
+        case .usage:  return "clients.sort.usage".loc
+        case .expiry: return "clients.sort.expiry".loc
+        }
+    }
+}
+
 struct ClientsView: View {
     @Environment(AppState.self) private var app
     private var store: DataStore { app.store }
 
     @State private var search = ""
+    @State private var sort: ClientSort = .name
     @State private var activeFilters: Set<ClientFilter> = []
     @State private var selectedInbound: Int? = nil   // nil == all
     @State private var toast: ToastData?
@@ -47,7 +60,19 @@ struct ClientsView: View {
             case .disabled: rows = rows.filter { !$0.client.enable }
             }
         }
-        return rows.sorted { $0.client.email.localizedCaseInsensitiveCompare($1.client.email) == .orderedAscending }
+        switch sort {
+        case .name:
+            return rows.sorted { $0.client.email.localizedCaseInsensitiveCompare($1.client.email) == .orderedAscending }
+        case .usage:
+            return rows.sorted { $0.used > $1.used }
+        case .expiry:
+            // Soonest real expiry first; "never" (0) sinks to the bottom.
+            return rows.sorted {
+                let a = $0.client.expiryTime <= 0 ? Int64.max : $0.client.expiryTime
+                let b = $1.client.expiryTime <= 0 ? Int64.max : $1.client.expiryTime
+                return a < b
+            }
+        }
     }
 
     var body: some View {
@@ -61,6 +86,14 @@ struct ClientsView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 4) {
+                        Menu {
+                            Picker("clients.sort".loc, selection: $sort) {
+                                ForEach(ClientSort.allCases) { Text($0.title).tag($0) }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down.circle")
+                                .foregroundStyle(Theme.accentGradient)
+                        }
                         Button {
                             Haptics.tap(); startAddClient()
                         } label: {

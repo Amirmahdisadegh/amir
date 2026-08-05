@@ -7,6 +7,7 @@ struct InboundsView: View {
 
     @State private var showAddInbound = false
     @State private var toast: ToastData?
+    @State private var inboundToDelete: Inbound?
 
     var body: some View {
         NavigationStack {
@@ -33,6 +34,19 @@ struct InboundsView: View {
                                                 onlineCount: onlineCount(for: inbound))
                                 }
                                 .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button {
+                                        Haptics.tap(); toggleInbound(inbound)
+                                    } label: {
+                                        Label(inbound.enable ? "common.disabled".loc : "common.enabled".loc,
+                                              systemImage: inbound.enable ? "pause.circle" : "play.circle")
+                                    }
+                                    Button(role: .destructive) {
+                                        Haptics.warning(); inboundToDelete = inbound
+                                    } label: {
+                                        Label("common.delete".loc, systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                         .padding()
@@ -59,6 +73,17 @@ struct InboundsView: View {
             .sheet(isPresented: $showAddInbound) {
                 InboundEditorView(toast: $toast)
             }
+            .confirmationDialog("inbound.delete_confirm".loc,
+                                isPresented: Binding(get: { inboundToDelete != nil },
+                                                     set: { if !$0 { inboundToDelete = nil } }),
+                                titleVisibility: .visible) {
+                Button("common.delete".loc, role: .destructive) {
+                    if let inbound = inboundToDelete { deleteInbound(inbound) }
+                }
+                Button("common.cancel".loc, role: .cancel) { inboundToDelete = nil }
+            } message: {
+                Text(inboundToDelete.map { $0.remark.isEmpty ? $0.tag : $0.remark } ?? "")
+            }
             .toast($toast)
             .navigationDestination(for: Int.self) { id in
                 if let inbound = store.inbound(withId: id) {
@@ -71,6 +96,32 @@ struct InboundsView: View {
 
     private func onlineCount(for inbound: Inbound) -> Int {
         inbound.clients.filter { store.onlineEmails.contains($0.email) }.count
+    }
+
+    private func toggleInbound(_ inbound: Inbound) {
+        Task {
+            do {
+                try await store.setInboundEnable(id: inbound.id, enable: !inbound.enable)
+                toast = ToastData(message: "toast.saved".loc)
+            } catch {
+                toast = ToastData(message: (error as? APIError)?.errorDescription ?? "",
+                                  symbol: "exclamationmark.triangle")
+            }
+        }
+    }
+
+    private func deleteInbound(_ inbound: Inbound) {
+        Task {
+            do {
+                try await store.deleteInbound(id: inbound.id)
+                Haptics.success()
+                toast = ToastData(message: "toast.client_deleted".loc, symbol: "trash")
+            } catch {
+                toast = ToastData(message: (error as? APIError)?.errorDescription ?? "",
+                                  symbol: "exclamationmark.triangle")
+            }
+            inboundToDelete = nil
+        }
     }
 }
 

@@ -414,6 +414,15 @@ actor APIClient {
         guard env.success else { throw APIError.server(env.msg ?? "Add inbound failed") }
     }
 
+    func setInboundEnable(id: Int, enable: Bool) async throws {
+        if mockMode { return }
+        struct Body: Encodable { let enable: Bool }
+        let body = try JSONEncoder().encode(Body(enable: enable))
+        let env = try await request(path: "panel/api/inbounds/setEnable/\(id)",
+                                    jsonBody: body, decode: APIStatusEnvelope.self)
+        guard env.success else { throw APIError.server(env.msg ?? "Update inbound failed") }
+    }
+
     func deleteInbound(id: Int) async throws {
         if mockMode { return }
         do {

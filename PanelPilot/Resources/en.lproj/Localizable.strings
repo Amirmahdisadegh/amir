@@ -89,6 +89,11 @@
 "inbound.reality_hint" = "Reality keys and short ID are generated automatically on this device.";
 "inbound.ws_path" = "WebSocket path";
 "inbound.create" = "Create inbound";
+"inbound.delete_confirm" = "Delete this inbound and all its clients?";
+"clients.sort" = "Sort";
+"clients.sort.name" = "Name";
+"clients.sort.usage" = "Usage";
+"clients.sort.expiry" = "Expiry";
 "clients.count" = "%d clients";
 "clients.filter.online" = "Online";
 "clients.filter.expiring" = "Expiring soon";
@@ -123,6 +128,9 @@
 "client.no_expiry_hint" = "0 = never expires";
 "client.online_badge" = "online";
 "client.inbounds" = "Inbounds (select one or more)";
+"client.ip_limit" = "IP limit";
+"client.ip_limit_hint" = "Max simultaneous IPs. 0 = unlimited.";
+"client.telegram_id" = "Telegram ID (optional)";
 
 /* Settings */
 "settings.title" = "Settings";

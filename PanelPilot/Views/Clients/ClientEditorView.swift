@@ -16,6 +16,8 @@ struct ClientEditorView: View {
     @State private var expiryDays: Double
     @State private var enable: Bool
     @State private var flow: String
+    @State private var ipLimit: Double
+    @State private var tgId: String
     @State private var selectedInboundIds: Set<Int>
     @State private var didLoadSelection = false
     @State private var isSaving = false
@@ -32,6 +34,8 @@ struct ClientEditorView: View {
         _limitGB = State(initialValue: existing.map { Double($0.totalGB) / 1_073_741_824 } ?? 0)
         _enable = State(initialValue: existing?.enable ?? true)
         _flow = State(initialValue: existing?.flow ?? defaultFlow(for: inbound))
+        _ipLimit = State(initialValue: Double(existing?.limitIp ?? 0))
+        _tgId = State(initialValue: existing?.tgId ?? "")
         _selectedInboundIds = State(initialValue: [inbound.id])
         if let expiry = existing?.expiryTime, expiry > 0 {
             let days = (Double(expiry) / 1000 - Date().timeIntervalSince1970) / 86_400
@@ -87,6 +91,21 @@ struct ClientEditorView: View {
                                         value: $expiryDays, range: 0...365, step: 1,
                                         display: expiryDays == 0 ? "common.never".loc
                                                                  : Fmt.digits("\(Int(expiryDays)) d"))
+                            Divider().overlay(Theme.cardStroke)
+                            sliderField(title: "client.ip_limit".loc,
+                                        hint: "client.ip_limit_hint".loc,
+                                        value: $ipLimit, range: 0...20, step: 1,
+                                        display: ipLimit == 0 ? "common.unlimited".loc
+                                                              : Fmt.digits("\(Int(ipLimit))"))
+                        }
+                    }
+
+                    GlassCard {
+                        labeledField("client.telegram_id".loc, symbol: "paperplane") {
+                            TextField("", text: $tgId)
+                                .keyboardType(.numbersAndPunctuation)
+                                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                                .foregroundStyle(Theme.textPrimary)
                         }
                     }
 
@@ -207,7 +226,9 @@ struct ClientEditorView: View {
         let expiryMs: Int64 = expiryDays == 0 ? 0
             : Int64((Date().timeIntervalSince1970 + expiryDays * 86_400) * 1000)
         let client = Client(id: uuid, email: email, flow: flow, totalGB: totalBytes,
-                            expiryTime: expiryMs, enable: enable)
+                            expiryTime: expiryMs, enable: enable,
+                            tgId: tgId.isEmpty ? nil : tgId,
+                            limitIp: Int(ipLimit))
         let ids = Array(selectedInboundIds)
         Task {
             do {

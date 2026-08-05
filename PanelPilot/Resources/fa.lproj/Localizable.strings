@@ -89,6 +89,11 @@
 "inbound.reality_hint" = "کلیدهای Reality و Short ID به‌صورت خودکار روی همین دستگاه ساخته می‌شوند.";
 "inbound.ws_path" = "مسیر WebSocket";
 "inbound.create" = "ساخت ورودی";
+"inbound.delete_confirm" = "این ورودی و همهٔ کاربرانش حذف شوند؟";
+"clients.sort" = "مرتب‌سازی";
+"clients.sort.name" = "نام";
+"clients.sort.usage" = "مصرف";
+"clients.sort.expiry" = "انقضا";
 "clients.count" = "%d کاربر";
 "clients.filter.online" = "آنلاین";
 "clients.filter.expiring" = "درحال انقضا";
@@ -123,6 +128,9 @@
 "client.no_expiry_hint" = "۰ = بدون انقضا";
 "client.online_badge" = "آنلاین";
 "client.inbounds" = "ورودی‌ها (یک یا چند تا)";
+"client.ip_limit" = "محدودیت IP";
+"client.ip_limit_hint" = "حداکثر IP هم‌زمان. ۰ = نامحدود.";
+"client.telegram_id" = "آیدی تلگرام (اختیاری)";
 
 /* Settings */
 "settings.title" = "تنظیمات";

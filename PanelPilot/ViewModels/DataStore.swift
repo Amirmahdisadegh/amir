@@ -97,6 +97,11 @@ final class DataStore {
         await refreshAll()
     }
 
+    func setInboundEnable(id: Int, enable: Bool) async throws {
+        try await APIClient.shared.setInboundEnable(id: id, enable: enable)
+        await refreshAll()
+    }
+
     func addClient(inboundId: Int, client: Client) async throws {
         try await addClient(inboundIds: [inboundId], client: client)
     }
