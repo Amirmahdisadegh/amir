@@ -30,6 +30,9 @@ class ExchangeCfg:
     quote: str = "USDT"
     rate_limit_ms: int = 200
     max_concurrency: int = 8
+    # OKX endpoint host. Cloud/VPS IPs are often Cloudflare-blocked on
+    # www.okx.com; "aws.okx.com" usually works from datacenters. Empty = default.
+    hostname: str = ""
 
 
 @dataclass(frozen=True)

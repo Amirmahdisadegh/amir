@@ -48,6 +48,9 @@ class OkxData:
         }
         if cfg.exchange.rate_limit_ms:
             params["rateLimit"] = cfg.exchange.rate_limit_ms
+        if cfg.exchange.hostname:
+            # e.g. aws.okx.com to bypass Cloudflare blocks on datacenter IPs
+            params["hostname"] = cfg.exchange.hostname
 
         if authenticated:
             creds = cfg.credentials

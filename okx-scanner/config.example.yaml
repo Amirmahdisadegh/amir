@@ -20,6 +20,9 @@ exchange:
   quote: USDT              # only pairs quoted in this asset are scanned
   rate_limit_ms: 200       # min delay between REST calls (ccxt enforces too)
   max_concurrency: 8       # parallel OHLCV requests per batch
+  # If www.okx.com returns Cloudflare 403 "you have been blocked" (common on
+  # cloud/VPS IPs), set this to aws.okx.com. Empty = default (www.okx.com).
+  hostname: ""
 
 universe:
   # How to build the list of symbols to scan.
