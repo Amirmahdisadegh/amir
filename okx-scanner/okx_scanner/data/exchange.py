@@ -21,6 +21,19 @@ from ..config import Config
 
 log = logging.getLogger("okx_scanner.data")
 
+# Base tickers OKX lists as USDT swaps that are NOT crypto (tokenized stocks,
+# commodities, metals, indices). We skip these so the bot trades crypto only.
+NON_CRYPTO_BASES = {
+    # metals / commodities / energy
+    "XAU", "XAG", "XPT", "XPD", "CL", "BZ", "NG", "HG", "GC", "SI", "WTI",
+    # equities & equity-like tokens
+    "NVDA", "TSLA", "META", "AMD", "INTC", "MU", "MRVL", "ORCL", "AAPL",
+    "AMZN", "GOOGL", "MSFT", "NFLX", "MSTR", "CRCL", "COIN", "HOOD", "NBIS",
+    "SNDK", "SKHYNIX", "SAMSUNG", "GLW", "SPCX", "AAOI", "COAI", "SOXL",
+    "EWY", "QQQ", "SPY", "TQQQ", "BE", "LITE", "DRAM", "LAB", "VVV",
+    "RIVER", "KORU", "CBRS", "EDGE", "GIGGLE", "BASED",
+}
+
 
 class OkxData:
     def __init__(self, cfg: Config, *, authenticated: bool = False):
@@ -100,6 +113,8 @@ class OkxData:
             if market.get("swap", False) != want_swap:
                 continue
             if want_swap and market.get("spot", False):
+                continue
+            if u.exclude_non_crypto and market.get("base") in NON_CRYPTO_BASES:
                 continue
             # OKX perp tickers don't always populate quoteVolume; fall back to
             # base volume * last price so the volume filter still works.

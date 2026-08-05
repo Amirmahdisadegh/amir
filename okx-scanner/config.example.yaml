@@ -27,6 +27,7 @@ universe:
   min_quote_volume: 5_000_000   # discard pairs below this 24h volume (in quote ccy)
   include: []              # force-include symbols, e.g. ["BTC/USDT:USDT"]
   exclude: []              # force-exclude symbols
+  exclude_non_crypto: true # drop OKX tokenized stocks / commodities / indices
 
 scan:
   timeframes: ["15m", "1h", "4h"]
@@ -73,6 +74,7 @@ telegram:
   enabled: true
   # token & chat_id come from .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)
   alert_cooldown_sec: 1800     # min seconds between identical alerts (symbol+tf+type)
+  heartbeat_hours: 6           # periodic "bot is alive" message (0 = disable)
 
 backtest:
   # A broader, liquid set gives a statistically meaningful sample. Testing on

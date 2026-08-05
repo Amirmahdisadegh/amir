@@ -28,6 +28,8 @@ class Scanner:
         self.notifier = notifier
         self.executor = executor
         self._universe: list[str] = []
+        self._last_sent_count = 0        # signals sent in the last cycle
+        self._cycles = 0
 
     async def refresh_universe(self) -> None:
         self._universe = await self.data.build_universe()
@@ -116,12 +118,33 @@ class Scanner:
             if self.executor is not None:
                 await self.executor.handle_signal(sig)
 
+        self._last_sent_count = len(strong)
+        self._cycles += 1
         log.info("scan complete: %d raw / %d confluence / %d sent (score>=%g)",
                  len(all_signals), len(signals), len(strong), min_score)
         return strong
 
+    async def _heartbeat(self) -> None:
+        """Compose and send a periodic 'alive' status message."""
+        lines = [
+            "💓 <b>ربات زنده است</b>",
+            f"حالت: {self.cfg.mode}  ·  کوین‌ها: {len(self._universe)}",
+            f"اسکن‌های انجام‌شده: {self._cycles}",
+            f"سیگنال‌های آخرین اسکن: {self._last_sent_count}",
+        ]
+        if self.executor is not None:
+            risk = self.executor.risk
+            lines.append(
+                f"پوزیشن‌های باز: {len(risk.state.positions)}  ·  "
+                f"ضرر روز: {risk.daily_loss_pct:.2f}%"
+            )
+        await self.notifier.send_text("\n".join(lines))
+
     async def run_forever(self) -> None:
+        import time
         interval = self.cfg.scan.poll_interval_sec
+        hb_secs = self.cfg.telegram.heartbeat_hours * 3600
+        last_hb = time.time()
         log.info("scanner started in '%s' mode, interval=%ss",
                  self.cfg.mode, interval)
         await self.notifier.send_text(
@@ -132,6 +155,13 @@ class Scanner:
                 await self.scan_once()
             except Exception as e:
                 log.exception("scan cycle error: %s", e)
+            # heartbeat: let the operator know the bot is still alive
+            if hb_secs > 0 and time.time() - last_hb >= hb_secs:
+                try:
+                    await self._heartbeat()
+                except Exception as e:
+                    log.warning("heartbeat failed: %s", e)
+                last_hb = time.time()
             # periodically refresh the universe (volumes drift)
             await asyncio.sleep(interval)
             try:

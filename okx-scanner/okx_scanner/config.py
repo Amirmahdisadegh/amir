@@ -38,6 +38,7 @@ class UniverseCfg:
     min_quote_volume: float = 5_000_000
     include: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
+    exclude_non_crypto: bool = True   # drop tokenized stocks / commodities / indices
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,7 @@ class RiskCfg:
 class TelegramCfg:
     enabled: bool = True
     alert_cooldown_sec: int = 1800
+    heartbeat_hours: float = 6.0      # periodic "alive" message (0 = off)
     bot_token: str = ""
     chat_id: str = ""
 
